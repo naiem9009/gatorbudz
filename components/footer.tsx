@@ -174,19 +174,6 @@ export default function Footer() {
                   Contact
                 </Link>
               </li>
-<<<<<<< HEAD
-=======
-              <li>
-                <a href="#" className="hover:text-accent hover:opacity-100 transition-colors">
-                  FAQ
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-accent hover:opacity-100 transition-colors">
-                  Blog
-                </a>
-              </li>
->>>>>>> 83009f1ac37bad315478ec03e4bdf9fe027b0239
             </ul>
           </div>
 
@@ -217,28 +204,9 @@ export default function Footer() {
                   href="mailto:admin@gatorbudz.com" 
                   className="hover:text-accent hover:opacity-100 transition-colors"
                 >
-<<<<<<< HEAD
                   support@gatorbudz.com
                 </a>
               </li>
-=======
-                  admin@gatorbudz.com
-                </a>
-              </li>
-              <li className="flex gap-2 items-start">
-                <Phone className="w-4 h-4 mt-0.5 flex-shrink-0 text-accent" />
-                <a 
-                  href="tel:" 
-                  className="hover:text-accent hover:opacity-100 transition-colors"
-                >
-                  
-                </a>
-              </li>
-              <li className="flex gap-2 items-start">
-                <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-accent" />
-                <span></span>
-              </li>
->>>>>>> 83009f1ac37bad315478ec03e4bdf9fe027b0239
             </ul>
           </div>
         </div>
