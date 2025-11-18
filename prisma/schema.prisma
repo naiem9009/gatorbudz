@@ -1,0 +1,511 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model with role and tier
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  company       String?
+  role          Role     @default(PUBLIC)
+  tier          Tier     @default(GOLD)
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  orderRequests         OrderRequest[]
+  invoices              Invoice[]
+  userFiles             UserFile[]
+  tierProposals         TierChangeProposal[] @relation("proposedBy")
+  tierProposalDecisions TierChangeProposal[] @relation("decidedBy")
+  auditLogs             AuditLog[]           @relation("actor")
+  notes                 UserNote[]
+  plaidLinkTokens      PlaidLinkToken[]
+  plaidAccounts        PlaidAccount[]
+  dwollaCustomer       DwollaCustomer?
+  dwollaFundingSources DwollaFundingSource[]
+
+  sessions Session[]
+  accounts Account[]
+
+  @@index([email])
+  @@index([role])
+  @@index([tier])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  // BA uses expiresAt + token (not expires/sessionToken like NextAuth v4)
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model Account {
+  id         String @id @default(cuid())
+  accountId  String
+  providerId String
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verification")
+}
+
+// Product model with tier-based pricing and strain-based pricing
+model Product {
+  id          String        @id @default(cuid())
+  name        String
+  slug        String        @unique
+  description String?
+  videoUrl    String
+  minimumQty  Int          @default(10) // Minimum order quantity
+  category    ProductCategory @default(EXOTICS)
+  subcategory ProductSubcategory? @default(GLADES)
+  status      ProductStatus @default(ACTIVE)
+
+  // Tier pricing (these ARE the bulk prices)
+  priceGold       Float?
+  pricePlatinum   Float?
+  priceDiamond    Float?
+
+  // Suggested retail price
+  suggestedRetail String @default("")
+
+  // Product specs
+  weight String?            // e.g., "3.5G"
+  potency String?           // e.g., "60-70%"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  orderItems OrderRequestItem[]
+
+  @@index([category])
+  @@index([subcategory])
+  @@index([status])
+}
+
+
+enum ProductCategory {
+  SUPER_EXOTICS
+  PREMIUM_EXOTICS
+  EXOTICS
+  LIVING_SOIL
+  COMMERCIAL_INDOORS
+  FRESH_DEPS
+  DEPS
+}
+
+
+enum ProductSubcategory {
+  GLADES
+  CYPRESS
+  SEAGLASS
+  SANDBAR
+}
+
+// Order Request model
+model OrderRequest {
+  id         String      @id @default(cuid())
+  userId     String
+  orderId    String     @unique @default("")
+  totalPrice Float
+  notes      String?
+  status     OrderStatus @default(PENDING)
+
+  // Audit trail
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastActorId   String?
+  lastActorRole Role?
+
+  // Relations
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items   OrderRequestItem[]
+  invoice Invoice?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderRequestItem {
+  id             String  @id @default(cuid())
+  orderRequestId String
+  productId      String
+  quantity       Int     @default(1)
+  unitPrice      Float
+  totalPrice     Float
+  notes          String?
+
+  // Relations
+  order   OrderRequest @relation(fields: [orderRequestId], references: [id], onDelete: Cascade)
+  product Product      @relation(fields: [productId], references: [id])
+
+  @@index([orderRequestId])
+  @@index([productId])
+}
+
+// Invoice model
+model Invoice {
+  id             String        @id @default(cuid())
+  userId         String
+  orderRequestId String        @unique // One-to-one relationship with order
+  invoiceNumber  String        @unique
+  total          Float
+  status         InvoiceStatus @default(DRAFT)
+  issueDate      DateTime      @default(now())
+  dueDate        DateTime
+
+  // Payment information
+  paymentMethod   PaymentMethod?
+  paidAt          DateTime?
+  paymentNotes    String?
+
+  // Stripe integration
+  stripeInvoiceId String?
+  stripeUrl       String?
+
+  businessAccountId String?
+  businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id])
+
+  // NowPayments integration
+  nowpaymentsInvoiceId String?
+  nowpaymentsUrl       String?
+
+  dwollaTransferId     String?
+  dwollaFundingSourceId String?
+  dwollaStatus         String? // PENDING, PROCESSING, COMPLETED, FAILED
+
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order       OrderRequest? @relation(fields: [orderRequestId], references: [id], onDelete: Cascade)
+  payments    Payment[]
+  dwollaFundingSource DwollaFundingSource? @relation(fields: [dwollaFundingSourceId], references: [id])
+
+  @@index([userId])
+  @@index([status])
+  @@index([invoiceNumber])
+  @@index([orderRequestId])
+  @@map("invoice")
+}
+
+model Payment {
+  id               String   @id @default(cuid())
+  invoiceId        String
+  amount           Float
+  method           PaymentMethod
+  status           String   // PENDING, COMPLETED, FAILED
+  reference        String?  // Zelle reference, transaction ID, etc.
+  
+  dwollaTransferId String?
+  dwollaUrl        String?
+  
+  notes            String?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  paidAt    DateTime?
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([reference])
+  @@index([dwollaTransferId])
+  @@index([createdAt])
+  @@map("payment")
+}
+
+// File upload model
+model UserFile {
+  id         String    @id @default(cuid())
+  userId     String
+  fileType   FileType
+  fileName   String
+  url        String // bunny.net URL
+  size       Int // File size in bytes
+  flagged    Boolean   @default(false)
+  reviewNote String?
+  reviewedBy String?
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([fileType])
+  @@index([flagged])
+}
+
+// Tier change proposal model
+model TierChangeProposal {
+  id           String         @id @default(cuid())
+  userId       String
+  proposedTier Tier
+  reason       String
+  status       ProposalStatus @default(PENDING)
+
+  createdBy    String
+  decidedBy    String?
+  decidedAt    DateTime?
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user     User @relation("proposedBy", fields: [userId], references: [id], onDelete: Cascade)
+  proposer User @relation("decidedBy", fields: [createdBy], references: [id])
+
+  @@index([userId])
+  @@index([status])
+}
+
+// User notes (CRM-style)
+model UserNote {
+  id        String @id @default(cuid())
+  userId    String
+  content   String
+  createdBy String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// Audit log model
+model AuditLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull, name: "actor")
+  actorRole Role?
+
+  action   String
+  entity   String
+  entityId String?
+
+  // Extra data
+  meta Json?
+
+  @@index([actorId])
+  @@index([action])
+  @@index([entity, entityId])
+}
+
+// Enums
+enum Role {
+  PUBLIC
+  VERIFIED
+  MANAGER
+  ADMIN
+}
+
+enum Tier {
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+  FULFILLED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  ZELLE
+  NOWPAYMENTS
+  STRIPE
+  MANUAL
+  DWOLLA
+}
+
+enum FileType {
+  LICENSE
+  ID
+  DOCUMENT
+  COA
+  OTHER
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum ProposalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model PlaidLinkToken {
+  id        String   @id @default(cuid())
+  userId    String
+  linkToken String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("plaid_link_token")
+}
+
+model PlaidAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  accountId         String
+  accessToken       String
+  bankName          String
+  accountName       String
+  accountMask       String
+  accountSubtype    String
+  verificationStatus String @default("PENDING")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, accountId])
+  @@index([userId])
+  @@index([verificationStatus])
+  @@map("plaid_account")
+}
+
+model DwollaCustomer {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  dwollaId  String   @unique
+  email     String
+  firstName String
+  lastName  String
+  status    String   @default("UNVERIFIED") // UNVERIFIED, VERIFIED, SUSPENDED
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([dwollaId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("dwolla_customer")
+}
+
+model DwollaFundingSource {
+  id               String   @id @default(cuid())
+  userId           String
+  dwollaId         String   @unique
+  dwollaCustomerId String
+  bankName         String
+  accountName      String
+  accountMask      String
+  bankAccountType  String
+  verified         Boolean  @default(false)
+  removed          Boolean  @default(false)
+  invoices        Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, accountMask])
+  @@index([userId])
+  @@index([dwollaId])
+  @@index([verified])
+  @@index([removed])
+  @@index([createdAt])
+  @@map("dwolla_funding_source")
+}
+
+model BusinessAccount {
+  id          String   @id @default(cuid())
+  name        String
+  dwollaId    String   @unique
+  email       String
+  type        String   @default("business")
+  status      String   @default("verified")
+  
+  businessName     String
+  businessType     String
+  businessAddress  Json?
+  taxId            String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  invoices Invoice[]
+
+  @@map("business_account")
+}
