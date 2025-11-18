@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     }
 
     // generate product slug
-    const slug = generateProductSlug(name)
+    const productSlug = generateProductSlug(name)
 
     const product = await prisma.product.create({
       data: {
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
         priceGold,
         pricePlatinum,
         priceDiamond,
-        slug,
+        slug: productSlug,
         status: "ACTIVE",
       },
       select: {
