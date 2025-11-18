@@ -39,7 +39,7 @@ export default function Header() {
 
         {/* Desktop Auth & Cart Section */}
         <div className="hidden md:flex items-center gap-4">
-          {user?.role !== "PUBLIC" && <Link href="/cart" className="relative p-2 text-foreground hover:text-accent transition">
+          {isAuthenticated && user?.role !== "PUBLIC" && <Link href="/cart" className="relative p-2 text-foreground hover:text-accent transition">
             <ShoppingCart size={20} />
             {cartCount > 0 && (
               <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
