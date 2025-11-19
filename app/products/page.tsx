@@ -329,14 +329,7 @@ export default function ProductsPage() {
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
         {/* Page Header */}
-        <div className="mb-8 md:mb-12 text-center">
-          <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text text-transparent mb-4">
-            Premium Products
-          </h1>
-          <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto">
-            Discover our curated selection of lab-tested, premium hemp and cannabis products. 
-            Quality you can trust.
-          </p>
+        <div className="text-center">
           
           {/* Tier Information */}
           {user && (

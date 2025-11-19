@@ -29,3 +29,4 @@ next-env.d.ts
 
 /prisma/migrations
 udo -i -u postgres
+gatorbudz.zip
