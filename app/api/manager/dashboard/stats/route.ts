@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     today.setHours(0, 0, 0, 0)
     const completedToday = await prisma.orderRequest.count({
       where: {
-        status: "COMPLETED",
+        status: "FULFILLED",
         createdAt: { gte: today },
       },
     })
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
     // Get orders with issues (cancelled or failed)
     const issues = await prisma.orderRequest.count({
-      where: { status: { in: ["CANCELLED", "FAILED"] } },
+      where: { status: { in: ["REJECTED"] } },
     })
 
     // Get weekly order data
@@ -58,8 +58,8 @@ export async function GET(request: NextRequest) {
       return {
         day: days[date.getDay()],
         pending: dayOrders.filter((o) => o.status === "PENDING").length,
-        completed: dayOrders.filter((o) => o.status === "COMPLETED").length,
-        cancelled: dayOrders.filter((o) => o.status === "CANCELLED").length,
+        completed: dayOrders.filter((o) => o.status === "FULFILLED").length,
+        cancelled: dayOrders.filter((o) => o.status === "REJECTED").length,
       }
     })
 

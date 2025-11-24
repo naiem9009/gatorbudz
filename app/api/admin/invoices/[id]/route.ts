@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const invoice = await prisma.invoice.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         user: true,
         order: {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -49,7 +49,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json()
 
     const updatedInvoice = await prisma.invoice.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         ...(body.status && { status: body.status }),
         ...(body.dueDate && { dueDate: new Date(body.dueDate) }),
@@ -70,7 +70,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -79,7 +79,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     await prisma.invoice.delete({
-      where: { id: params.id },
+      where: { id: (await params).id },
     })
 
     return NextResponse.json({ success: true })

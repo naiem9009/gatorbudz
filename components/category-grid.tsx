@@ -3,20 +3,28 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react"
 import VideoCard from "./video-card"
 import { useAuth } from "@/lib/auth-context"
-import { Crown, Star, Zap } from 'lucide-react'
 import { getCategory } from "@/lib/utils"
-import { Badge } from "./ui/badge"
+
+
+interface ProductVariant {
+  id: string
+  subcategory: string
+  priceGold?: number
+  pricePlatinum?: number
+  priceDiamond?: number
+}
 
 interface Product {
   id: string
   name: string
-  category: string
-  priceGold?: number
-  pricePlatinum?: number
-  priceDiamond?: number
-  videoUrl: string
   description: string
+  videoUrl: string
+  category: string
   slug: string
+  weight?: string
+  potency?: string
+  minimumQty: number
+  variants: ProductVariant[]
 }
 
 interface CategoryGridProps {

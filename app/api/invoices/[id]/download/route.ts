@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const invoice = await prisma.invoice.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         order: {
           include: {

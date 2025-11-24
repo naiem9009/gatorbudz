@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 
 export const runtime = "nodejs"
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -20,7 +20,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     const order = await prisma.orderRequest.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         status,
         lastActorId: session.user.id,
@@ -29,7 +29,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       },
       include: {
         user: { select: { id: true, email: true, name: true } },
-        product: { select: { id: true, name: true } },
       },
     })
 
@@ -41,7 +40,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         action: `UPDATE_ORDER_STATUS_${status}`,
         entity: "OrderRequest",
         entityId: order.id,
-        metaJson: JSON.stringify({ previousStatus: "PENDING", newStatus: status }),
       },
     })
 

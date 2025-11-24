@@ -10,7 +10,7 @@ const updateProposalSchema = z.object({
   decisionNote: z.string().optional(),
 })
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -22,7 +22,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const { status, decisionNote } = updateProposalSchema.parse(body)
 
     const proposal = await prisma.tierChangeProposal.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
     })
 
     if (!proposal) {
@@ -30,7 +30,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const updatedProposal = await prisma.tierChangeProposal.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         status,
         decidedBy: session.user.id,
@@ -58,8 +58,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         actorRole: session.user.role,
         action: `${status}_TIER_PROPOSAL`,
         entity: "TierChangeProposal",
-        entityId: params.id,
-        metaJson: JSON.stringify({ userId: proposal.userId, proposedTier: proposal.proposedTier }),
+        entityId: (await params).id,
       },
     })
 

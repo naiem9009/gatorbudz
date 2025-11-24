@@ -49,47 +49,47 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const session = await auth.api.getSession({ headers: request.headers })
+// export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+//   try {
+//     const session = await auth.api.getSession({ headers: request.headers })
 
-    if (!session || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
+//     if (!session || session.user.role !== "ADMIN") {
+//       return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+//     }
 
-    const productId = (await params).id
+//     const productId = (await params).id
 
-    // Use transaction to delete product and its variants
-    await prisma.$transaction(async (tx) => {
-      // First delete variants (due to foreign key constraint)
-      await tx.productVariant.deleteMany({
-        where: { productId }
-      })
+//     // Use transaction to delete product and its variants
+//     await prisma.$transaction(async (tx) => {
+//       // First delete variants (due to foreign key constraint)
+//       await tx.productVariant.deleteMany({
+//         where: { productId }
+//       })
 
-      // Then delete the product
-      await tx.product.delete({
-        where: { id: productId }
-      })
-    })
+//       // Then delete the product
+//       await tx.product.delete({
+//         where: { id: productId }
+//       })
+//     })
 
-    // Log audit
-    await prisma.auditLog.create({
-      data: {
-        actorId: session.user.id,
-        actorRole: session.user.role,
-        action: "DELETE_PRODUCT",
-        entity: "Product",
-        entityId: productId,
-        meta: {},
-      },
-    })
+//     // Log audit
+//     await prisma.auditLog.create({
+//       data: {
+//         actorId: session.user.id,
+//         actorRole: session.user.role,
+//         action: "DELETE_PRODUCT",
+//         entity: "Product",
+//         entityId: productId,
+//         meta: {},
+//       },
+//     })
 
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error deleting product:", error)
-    return NextResponse.json({ error: "Failed to delete product" }, { status: 500 })
-  }
-}
+//     return NextResponse.json({ success: true })
+//   } catch (error) {
+//     console.error("Error deleting product:", error)
+//     return NextResponse.json({ error: "Failed to delete product" }, { status: 500 })
+//   }
+// }
 
 // POST create product
 // export async function POST(request: NextRequest) {

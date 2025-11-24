@@ -12,7 +12,7 @@ const updateUserSchema = z.object({
   company: z.string().optional(),
 })
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -24,7 +24,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const updates = updateUserSchema.parse(body)
 
     const user = await prisma.user.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: updates,
     })
 
@@ -35,7 +35,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         actorRole: session.user.role,
         action: "UPDATE_USER",
         entity: "User",
-        entityId: params.id,
+        entityId: (await params).id,
         meta: updates,
       },
     })
@@ -49,7 +49,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -58,7 +58,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     await prisma.user.delete({
-      where: { id: params.id },
+      where: { id: (await params).id },
     })
 
     // Log audit
@@ -68,7 +68,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         actorRole: session.user.role,
         action: "DELETE_USER",
         entity: "User",
-        entityId: params.id,
+        entityId: (await params).id,
       },
     })
 

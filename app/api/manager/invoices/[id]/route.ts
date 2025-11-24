@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import { db } from "@/lib/db"
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
 
@@ -11,7 +11,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     await db.invoice.delete({
-      where: { id: params.id },
+      where: { id: (await params).id },
     })
 
     return Response.json({ message: "Invoice deleted" })
@@ -21,7 +21,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
   }
 }
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
 
@@ -30,7 +30,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
 
     const invoice = await db.invoice.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         user: true,
         order: {
@@ -57,7 +57,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
 
@@ -68,7 +68,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     const body = await request.json()
 
     const updatedInvoice = await db.invoice.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         ...body,
         ...(body.status === "PAID" && { paidAt: new Date() }),

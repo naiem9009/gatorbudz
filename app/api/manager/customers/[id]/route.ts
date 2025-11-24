@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth"
 import { headers } from "next/headers"
 import { db } from "@/lib/db"
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: await headers() })
 
@@ -11,7 +11,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
 
     await db.user.delete({
-      where: { id: params.id },
+      where: { id: (await params).id },
     })
 
     return Response.json({ message: "Customer deleted" })

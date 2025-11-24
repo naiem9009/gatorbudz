@@ -21,9 +21,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <script src="https://cdn.plaid.com/link/v3/stable/link-initialize.js" async />
-      </head>
       <body className={`font-sans antialiased`}>
         <AuthProvider>
           <CartProvider>

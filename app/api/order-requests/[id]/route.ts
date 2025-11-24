@@ -12,7 +12,7 @@ const updateOrderSchema = z.object({
 })
 
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     }
 
     const order = await prisma.orderRequest.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       include: {
         user: true,
         items: {
@@ -106,7 +106,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 //   }
 // }
 
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -120,7 +120,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     // Start a transaction to ensure data consistency
     const result = await prisma.$transaction(async (tx) => {
       const order = await tx.orderRequest.findUnique({
-        where: { id: params.id },
+        where: { id: (await params).id },
         include: {
           user: true,
           items: {
@@ -172,7 +172,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
         // Update order with new status
         await tx.orderRequest.update({
-          where: { id: params.id },
+          where: { id: (await params).id },
           data: { ...updateData, status: "APPROVED" },
         })
 
@@ -183,7 +183,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
             actorRole: session.user.role,
             action: "ORDER_APPROVED",
             entity: "OrderRequest",
-            entityId: params.id,
+            entityId: (await params).id,
             meta: { 
               previousStatus: order.status, 
               newStatus: "APPROVED",
@@ -200,7 +200,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       } else {
         // Regular update without invoice creation
         const updatedOrder = await tx.orderRequest.update({
-          where: { id: params.id },
+          where: { id: (await params).id },
           data: updateData,
           include: {
             user: true,
@@ -224,7 +224,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
             actorRole: session.user.role,
             action: `UPDATE_ORDER_${status || "NOTES"}`,
             entity: "OrderRequest",
-            entityId: params.id,
+            entityId: (await params).id,
             meta: { previousStatus: order.status, newStatus: status },
           },
         })
@@ -287,7 +287,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 }
 
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -296,7 +296,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     const order = await prisma.orderRequest.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
     })
 
     if (!order) {
@@ -304,7 +304,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     await prisma.orderRequest.delete({
-      where: { id: params.id },
+      where: { id: (await params).id },
     })
 
     // Log audit
@@ -314,7 +314,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
         actorRole: session.user.role,
         action: "DELETE_ORDER",
         entity: "OrderRequest",
-        entityId: params.id,
+        entityId: (await params).id,
       },
     })
 

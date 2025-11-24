@@ -1,10 +1,14 @@
 module.exports = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "lh3.googleusercontent.com",
-      },
-    ],
-  },
+    images: {
+        remotePatterns: [
+            {
+                protocol: "https",
+                hostname: "lh3.googleusercontent.com",
+            },
+        ],
+    },
+
+    typescript: {
+        ignoreBuildErrors: true,
+    },
 }

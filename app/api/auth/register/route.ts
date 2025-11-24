@@ -1,20 +1,11 @@
-// app/api/auth/register/route.ts
 import { type NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { PrismaClient, Prisma } from "@prisma/client"
 import { auth } from "@/lib/auth"
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library"
+import { prisma } from "@/lib/db"
 
 
 export const runtime = "nodejs"
-
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-  })
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -80,7 +71,7 @@ export async function POST(request: NextRequest) {
     if (err?.issues) {
       return NextResponse.json({ error: err.issues }, { status: 400 })
     }
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+    if (err instanceof PrismaClientKnownRequestError && err.code === "P2002") {
       return NextResponse.json({ error: "User already exists" }, { status: 400 })
     }
     console.error("Registration failed:", err)

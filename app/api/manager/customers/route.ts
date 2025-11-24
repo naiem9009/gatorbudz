@@ -11,7 +11,7 @@ export async function GET() {
     }
 
     const users = await db.user.findMany({
-      where: { role: "USER" },
+      where: { role: "VERIFIED" },
       include: {
         _count: {
           select: { orderRequests: true },
@@ -31,7 +31,7 @@ export async function GET() {
           id: user.id,
           email: user.email,
           name: user.name || "Unknown",
-          tier: user.tier || "STANDARD",
+          tier: user.tier || "GOLD",
           totalOrders: user._count.orderRequests,
           totalSpent,
           createdAt: user.createdAt,

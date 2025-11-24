@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db"
 
 export const runtime = "nodejs"
 
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
 
@@ -20,7 +20,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     const proposal = await prisma.tierChangeProposal.update({
-      where: { id: params.id },
+      where: { id: (await params).id },
       data: {
         status,
         decidedBy: session.user.id,
