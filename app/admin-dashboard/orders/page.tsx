@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, ShoppingCart, DollarSign, Clock } from 'lucide-react'
+import { Eye, ShoppingCart, DollarSign, Clock, Package } from 'lucide-react'
 import DataTable from "@/components/admin/data-table"
 import {
   Dialog,
@@ -67,7 +67,10 @@ export default function OrdersPage() {
       o.user?.name?.toLowerCase().includes(term) ||
       o.user?.company?.toLowerCase().includes(term)
     const matchesItem = Array.isArray(o.items)
-      ? o.items.some((item: any) => item.product?.name?.toLowerCase().includes(term))
+      ? o.items.some((item: any) => 
+          item.product?.name?.toLowerCase().includes(term) ||
+          item.strain?.toLowerCase().includes(term)
+        )
       : false
     return matchesCustomer || matchesItem
   })
@@ -75,7 +78,8 @@ export default function OrdersPage() {
   const stats = {
     total: orders.length,
     pending: orders.filter((o) => o.status === "PENDING").length,
-    totalRevenue: orders.filter((o) => (o.status === "PAID" && o.status === "FULFILLED")).reduce((sum, o) => sum + (o.totalAmount ?? o.totalPrice ?? 0), 0),
+    totalRevenue: orders.filter((o) => (o.status === "PAID" || o.status === "FULFILLED")).reduce((sum, o) => sum + (o.totalAmount ?? o.totalPrice ?? 0), 0),
+    totalItems: orders.reduce((sum, order) => sum + (order.items?.reduce((itemSum: number, item: any) => itemSum + (item.quantity || 0), 0) || 0), 0),
   }
 
   const getStatusColor = (status: string) => {
@@ -88,6 +92,7 @@ export default function OrdersPage() {
     }
     return colors[status] || colors.PENDING
   }
+  
 
   const columns = [
     {
@@ -97,6 +102,7 @@ export default function OrdersPage() {
         <div>
           <p className="font-semibold text-foreground">{value?.email || "Unknown"}</p>
           <p className="text-xs text-muted-foreground">{value?.company || "No company"}</p>
+          <p className="text-xs text-muted-foreground capitalize">{value?.tier?.toLowerCase() || "unknown"} tier</p>
         </div>
       ),
     },
@@ -107,11 +113,24 @@ export default function OrdersPage() {
         const first = row.items?.[0]
         if (!first) return "-"
         const remaining = Math.max(0, (row.items?.length || 0) - 1)
-        const name = first.product?.name + ` - ${first.product.subcategory}` || "Product"
+        const productName = first.product?.name || "Product"
+        const strain = first.strain || first.product?.subcategory || ""
+        
         return (
           <div>
-            <p className="text-sm font-medium">{name}</p>
-            {remaining > 0 && <p className="text-xs text-muted-foreground">+{remaining} more items</p>}
+            <p className="text-sm font-medium">{productName}</p>
+            <div className="flex items-center gap-1 mt-1">
+              {strain && (
+                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-700">
+                  {strain}
+                </Badge>
+              )}
+              {remaining > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{remaining} more
+                </Badge>
+              )}
+            </div>
           </div>
         )
       },
@@ -154,7 +173,7 @@ export default function OrdersPage() {
         </div>
 
         {/* Order Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-card border-border/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
@@ -184,13 +203,26 @@ export default function OrdersPage() {
           <Card className="bg-card border-border/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
+                <Package className="w-4 h-4 text-blue-400" />
+                Total Items
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-400">{stats.totalItems}</div>
+              <p className="text-xs text-muted-foreground mt-1">Units ordered</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                 <DollarSign className="w-4 h-4 text-green-400" />
                 Total Revenue
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-accent">${stats.totalRevenue.toFixed(2)}</div>
-              <p className="text-xs text-muted-foreground mt-1">All time</p>
+              <p className="text-xs text-muted-foreground mt-1">Paid & fulfilled</p>
             </CardContent>
           </Card>
         </div>
@@ -199,10 +231,10 @@ export default function OrdersPage() {
       {/* Table */}
       <DataTable
         title="All Orders"
-        description={`Total: ${filteredOrders.length} orders`}
+        description={`Total: ${filteredOrders.length} orders, ${stats.totalItems} items`}
         columns={columns}
         data={filteredOrders}
-        searchPlaceholder="Search by customer or product..."
+        searchPlaceholder="Search by customer, product, or strain..."
         onSearch={setSearchTerm}
         actions={(row) => (
           <Button
@@ -218,7 +250,7 @@ export default function OrdersPage() {
 
       {/* Order Details Dialog */}
       <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <DialogContent className="bg-card border-border/50 max-w-2xl">
+        <DialogContent className="bg-card border-border/50 max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-accent">Order Details</DialogTitle>
             <DialogDescription>View and update order information</DialogDescription>
@@ -234,26 +266,60 @@ export default function OrdersPage() {
                   {selectedOrder.user?.company && (
                     <p className="text-sm text-muted-foreground">{selectedOrder.user.company}</p>
                   )}
+                  <p className="text-xs text-muted-foreground capitalize mt-1">
+                    {selectedOrder.user?.tier?.toLowerCase() || "unknown"} tier
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total</p>
                   <p className="text-2xl font-bold text-accent">
                     ${Number((selectedOrder.totalAmount ?? selectedOrder.totalPrice) || 0).toFixed(2)}
                   </p>
+                  <p className="text-xs text-muted-foreground">
+                    Order #: {selectedOrder.orderId}
+                  </p>
                 </div>
               </div>
 
               {/* Order Items */}
               <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3 font-semibold">Items</p>
-                <div className="space-y-2 p-3 bg-primary/20 rounded-lg border border-border/30">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3 font-semibold">
+                  Items ({selectedOrder.items?.length || 0})
+                </p>
+                <div className="space-y-3">
                   {selectedOrder.items?.map((item: any, idx: number) => (
-                    <div key={item.id || idx} className="flex justify-between items-center text-sm pb-2 border-b border-border/20 last:border-b-0">
-                      <span className="text-foreground">{item.product?.name + ` - ${item.product.subcategory}` || "Product"}</span>
-                      <div className="flex gap-4 items-center">
-                        <span className="text-muted-foreground">Qty: {item.quantity}</span>
-                        <span className="font-semibold text-accent">${Number(item.totalPrice || 0).toFixed(2)}</span>
+                    <div key={item.id || idx} className="p-3 bg-primary/20 rounded-lg border border-border/30">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <p className="text-foreground font-medium">{item.product?.name || "Product"}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {item.strain && (
+                              <Badge variant="outline" className="text-xs bg-green-500/10 text-green-700">
+                                {item.strain}
+                              </Badge>
+                            )}
+                            <Badge variant="secondary" className="text-xs">
+                              {item.quantity} unit{item.quantity > 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-accent">${Number(item.totalPrice || 0).toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground">${Number(item.unitPrice || 0).toFixed(2)} each</p>
+                        </div>
                       </div>
+                      {/* Product details */}
+                      {(item.product?.weight || item.product?.potency) && (
+                        <div className="flex gap-4 text-xs text-muted-foreground mt-2">
+                          {item.product?.weight && <span>📦 {item.product.weight}</span>}
+                          {item.product?.potency && <span>⚡ {item.product.potency}</span>}
+                        </div>
+                      )}
+                      {item.notes && (
+                        <div className="mt-2 p-2 bg-primary/30 rounded text-xs">
+                          <p className="text-muted-foreground">Note: {item.notes}</p>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -283,7 +349,7 @@ export default function OrdersPage() {
               {/* Order Metadata */}
               {selectedOrder.notes && (
                 <div className="p-3 bg-primary/20 rounded-lg border border-border/30">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2 font-semibold">Notes</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2 font-semibold">Order Notes</p>
                   <p className="text-foreground text-sm">{selectedOrder.notes}</p>
                 </div>
               )}

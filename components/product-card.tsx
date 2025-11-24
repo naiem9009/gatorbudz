@@ -39,9 +39,6 @@ export default function ProductCard({
   weight,
   potency,
   slug,
-  bulkDiscountGold,
-  bulkDiscountPlatinum,
-  bulkDiscountDiamond,
   suggestedRetail,
 }: ProductCardProps) {
   const { user, isAuthenticated } = useAuth()

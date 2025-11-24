@@ -13,6 +13,7 @@ interface InvoiceEmailProps {
   orderDate?: Date
   items: Array<{
     name: string
+    strain?: string // Added strain field
     quantity: number
     unitPrice: number
     totalPrice: number
@@ -124,6 +125,14 @@ export async function sendInvoiceEmail(props: InvoiceEmailProps) {
             padding: 12px;
             border-bottom: 1px solid #e5e7eb;
           }
+          .strain-badge {
+            background: #10b981;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-left: 8px;
+          }
           .total { 
             font-size: 18px; 
             font-weight: bold; 
@@ -183,7 +192,7 @@ export async function sendInvoiceEmail(props: InvoiceEmailProps) {
             
             <div class="customer-info">
               <p style="margin: 5px 0;"><strong>Customer:</strong> ${displayName}</p>
-              <p style="margin: 5px 0;"><strong>Order Date:</strong> ${orderDate}</p>
+              <p style="margin: 5px 0;"><strong>Order Date:</strong> ${orderDate ? new Date(orderDate).toLocaleDateString() : 'N/A'}</p>
               <p style="margin: 5px 0;"><strong>Payment Due:</strong> <span class="due-date">${dueDate.toLocaleDateString()}</span></p>
             </div>
             
@@ -201,7 +210,10 @@ export async function sendInvoiceEmail(props: InvoiceEmailProps) {
                 <tbody>
                   ${items.map(item => `
                     <tr>
-                      <td>${item.name}</td>
+                      <td>
+                        ${item.name}
+                        ${item.strain ? `<span class="strain-badge">${item.strain}</span>` : ''}
+                      </td>
                       <td>${item.quantity}</td>
                       <td>${formatCurrency(item.unitPrice)}</td>
                       <td>${formatCurrency(item.totalPrice)}</td>
@@ -245,7 +257,7 @@ export async function sendInvoiceEmail(props: InvoiceEmailProps) {
     `
 
     const { data, error } = await resend.emails.send({
-      from: 'GatorBudz <onboarding@resend.dev>',
+      from: 'onboarding@resend.dev',
       to,
       subject: `Invoice #${invoiceNumber} - Your GatorBudz Order`,
       html,

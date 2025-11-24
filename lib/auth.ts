@@ -18,7 +18,7 @@ export const auth = betterAuth({
     customSession(async ({ user, session }) => {
       const dbUser = await prisma.user.findUnique({
         where: { id: session.userId },
-        select: { role: true, tier: true, company: true },
+        select: { role: true, tier: true, company: true, image: true },
       })
 
       return {
@@ -27,6 +27,7 @@ export const auth = betterAuth({
           role: dbUser?.role ?? "PUBLIC",
           tier: dbUser?.tier ?? null,
           company: dbUser?.company ?? null,
+          image: dbUser?.image ?? null,
         },
         session,
       }
@@ -36,6 +37,7 @@ export const auth = betterAuth({
     role:   { type: "string", required: false },
     tier:   { type: "string", required: false },
     company:{ type: "string", required: false },
+    image:{ type: "string", required: false },
   },
 })
 

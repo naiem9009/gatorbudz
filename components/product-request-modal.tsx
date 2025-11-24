@@ -10,18 +10,25 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
 
+interface ProductVariant {
+  id: string
+  subcategory: string
+  priceGold?: number
+  pricePlatinum?: number
+  priceDiamond?: number
+}
+
 interface Product {
   id: string
   name: string
-  priceGold: number
-  pricePlatinum: number
-  priceDiamond: number
+  variants: ProductVariant[]
 }
 
 interface ProductRequestModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   product: Product
+  selectedVariant: ProductVariant
   userTier: string
   minimumQty?: number
   onSuccess: () => void
@@ -31,6 +38,7 @@ export default function ProductRequestModal({
   open,
   onOpenChange,
   product,
+  selectedVariant,
   userTier,
   onSuccess,
   minimumQty,
@@ -39,15 +47,15 @@ export default function ProductRequestModal({
   const [notes, setNotes] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const route = useRouter()
+  const router = useRouter()
 
-  const tierPrices: Record<string, number> = {
-    GOLD: product.priceGold,
-    PLATINUM: product.pricePlatinum,
-    DIAMOND: product.priceDiamond,
+  const tierPrices: Record<string, number | undefined> = {
+    GOLD: selectedVariant.priceGold,
+    PLATINUM: selectedVariant.pricePlatinum,
+    DIAMOND: selectedVariant.priceDiamond,
   }
 
-  const unitPrice = tierPrices[userTier] || product.priceGold
+  const unitPrice = tierPrices[userTier] || selectedVariant.priceGold || 0
   const totalPrice = unitPrice * quantity
 
   async function handleSubmit(e: React.FormEvent) {
@@ -55,16 +63,25 @@ export default function ProductRequestModal({
     setLoading(true)
     setError("")
 
+    // Validate that we have a price for the selected variant
+    if (!unitPrice || unitPrice === 0) {
+      setError("No price available for the selected strain. Please contact support.")
+      setLoading(false)
+      return
+    }
+
     try {
       const res = await fetch("/api/order-requests/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           productId: product.id,
+          variantId: selectedVariant.id,
           quantity,
           unitPrice,
           totalPrice,
           notes,
+          strain: selectedVariant.subcategory,
         }),
       })
 
@@ -75,9 +92,9 @@ export default function ProductRequestModal({
 
       onSuccess()
       onOpenChange(false)
-      setQuantity(1)
+      setQuantity(minimumQty || 1)
       setNotes("")
-      route.push("/dashboard")
+      router.push("/dashboard")
 
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred")
@@ -91,7 +108,10 @@ export default function ProductRequestModal({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Request Quote</DialogTitle>
-          <DialogDescription>Submit your request for {product.name}</DialogDescription>
+          <DialogDescription>
+            Submit your request for {product.name}
+            {product.variants.length > 1 && ` - ${selectedVariant.subcategory}`}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -100,12 +120,29 @@ export default function ProductRequestModal({
             <div className="flex justify-between items-start mb-3">
               <div>
                 <h3 className="font-semibold text-foreground">{product.name}</h3>
-                <Badge className="mt-2 bg-blue-500/10 text-blue-700">{userTier}</Badge>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Badge className="bg-blue-500/10 text-blue-700">{userTier} Tier</Badge>
+                  {product.variants.length > 1 && (
+                    <Badge variant="outline" className="bg-green-500/10 text-green-700">
+                      {selectedVariant.subcategory}
+                    </Badge>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Unit Price:</span>
-              <span className="font-semibold text-foreground">${unitPrice.toFixed(2)}</span>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Unit Price:</span>
+                <span className="font-semibold text-foreground">
+                  ${unitPrice.toFixed(2)}
+                </span>
+              </div>
+              {minimumQty && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Minimum Quantity:</span>
+                  <span className="font-semibold text-foreground">{minimumQty}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -113,17 +150,31 @@ export default function ProductRequestModal({
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">Quantity</label>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setQuantity(Math.max(minimumQty || 1, quantity - 1))}
+                disabled={quantity <= (minimumQty || 1)}
+              >
                 −
               </Button>
               <Input
                 type="number"
-                min={1}
+                min={minimumQty || 1}
                 value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Number.parseInt(e.target.value) || 1))}
+                onChange={(e) => {
+                  const value = Math.max(minimumQty || 1, Number.parseInt(e.target.value) || (minimumQty || 1))
+                  setQuantity(value)
+                }}
                 className="w-20 text-center"
               />
-              <Button type="button" variant="outline" size="sm" onClick={() => setQuantity(quantity + 1)}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setQuantity(quantity + 1)}
+              >
                 +
               </Button>
               <div className="flex-1 text-right">
@@ -131,11 +182,18 @@ export default function ProductRequestModal({
                 <p className="text-lg font-bold text-accent">${totalPrice.toFixed(2)}</p>
               </div>
             </div>
+            {minimumQty && quantity < minimumQty && (
+              <p className="text-sm text-yellow-600 mt-2">
+                Minimum order quantity is {minimumQty} units
+              </p>
+            )}
           </div>
 
           {/* Notes */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Additional Notes (Optional)</label>
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              Additional Notes (Optional)
+            </label>
             <Textarea
               placeholder="Add any special requests or questions..."
               value={notes}
@@ -145,7 +203,11 @@ export default function ProductRequestModal({
           </div>
 
           {/* Error */}
-          {error && <div className="bg-red-500/10 text-red-700 p-3 rounded text-sm">{error}</div>}
+          {error && (
+            <div className="bg-red-500/10 text-red-700 p-3 rounded text-sm">
+              {error}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">
@@ -160,8 +222,8 @@ export default function ProductRequestModal({
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-accent text-accent-foreground hover:bg-white cursor-pointer"
-              disabled={loading}
+              className="flex-1 bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer"
+              disabled={loading || !unitPrice || unitPrice === 0 || quantity < (minimumQty || 1)}
             >
               {loading ? "Submitting..." : "Submit Request"}
             </Button>

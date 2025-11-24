@@ -7,16 +7,25 @@ import { Crown, Star, Zap } from "lucide-react"
 import { getCategory } from "@/lib/utils"
 import { Badge } from "./ui/badge"
 
+interface ProductVariant {
+  id: string
+  subcategory: string
+  priceGold?: number
+  pricePlatinum?: number
+  priceDiamond?: number
+}
+
 interface Product {
   id: string
   name: string
   category: string
-  priceGold?: number
-  pricePlatinum?: number
-  priceDiamond?: number
   videoUrl: string
   description: string
   slug: string
+  weight?: string
+  potency?: string
+  minimumQty: number
+  variants: ProductVariant[]
 }
 
 interface VideoGridProps {
@@ -32,45 +41,49 @@ interface CategoryData {
 
 // Default category metadata with fallbacks
 const defaultCategoryMetadata: {[key: string]: {description: string; icon: string}} = {
-  
-  "Super Exotics": {
+  "SUPER_EXOTICS": {
     description: "Premium Super Exotics selection",
     icon: "🔥"
   },
-  "Premium Exotics": {
+  "PREMIUM_EXOTICS": {
     description: "Premium Exotics selection",
-    icon: "🔥"
+    icon: "⭐"
   },
-  "": {
-    description: "",
-    icon: "🍬"
+  "EXOTICS": {
+    description: "Exotic strains collection",
+    icon: "🌿"
   },
-  "": {
-    description: "",
+  "LIVING_SOIL": {
+    description: "Living soil grown products",
+    icon: "🌱"
+  },
+  "COMMERCIAL_INDOORS": {
+    description: "Commercial indoor cultivation",
+    icon: "🏭"
+  },
+  "FRESH_DEPS": {
+    description: "Fresh dep products",
     icon: "💧"
   },
-  "": {
-    description: "",
+  "DEPS": {
+    description: "Dep selection",
     icon: "🧴"
   }
 }
 
 // Price display component based on user tier
-const PriceDisplay = ({ product, userTier, role }: { product: Product; userTier: string, role: string }) => {
-  
-  
-  const getPriceForTier = useCallback(() => {
+const PriceDisplay = ({ variants, userTier, role }: { variants: ProductVariant[]; userTier: string, role: string }) => {
+  const getPriceForTier = useCallback((variant: ProductVariant) => {
     switch (userTier) {
       case "DIAMOND":
-        return product.priceDiamond
+        return variant.priceDiamond
       case "PLATINUM":
-        return product.pricePlatinum
+        return variant.pricePlatinum
       case "GOLD":
       default:
-        return product.priceGold
+        return variant.priceGold
     }
-    
-  }, [product, userTier])
+  }, [userTier])
 
   const getTierIcon = useCallback((tier: string) => {
     switch (tier) {
@@ -84,9 +97,28 @@ const PriceDisplay = ({ product, userTier, role }: { product: Product; userTier:
     }
   }, [])
 
-  const price = getPriceForTier()
-  
-  if (!price && price !== 0) {
+  // Show price range across all variants
+  const priceRange = useMemo(() => {
+    const allPrices = variants.flatMap(variant => {
+      const price = getPriceForTier(variant)
+      return price !== undefined ? [price] : []
+    })
+
+    if (allPrices.length === 0) {
+      return null
+    }
+
+    const minPrice = Math.min(...allPrices)
+    const maxPrice = Math.max(...allPrices)
+
+    return {
+      min: minPrice,
+      max: maxPrice,
+      hasRange: minPrice !== maxPrice
+    }
+  }, [variants, getPriceForTier])
+
+  if (!priceRange) {
     return (
       <div className="text-sm text-muted-foreground">
         {role === "PUBLIC" ? "Contact the admin to verify your account and enable full access" : "Login to view prices"}
@@ -95,18 +127,29 @@ const PriceDisplay = ({ product, userTier, role }: { product: Product; userTier:
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1 text-accent font-semibold">
-        {getTierIcon(userTier)}
-        <span>${price.toFixed(2)}</span>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 text-accent font-semibold">
+          {getTierIcon(userTier)}
+          <span>
+            {priceRange.hasRange 
+              ? `$${priceRange.min.toFixed(2)} - $${priceRange.max.toFixed(2)}`
+              : `$${priceRange.min.toFixed(2)}`
+            }
+          </span>
+        </div>
+        <Badge variant="outline" className="text-xs">
+          {userTier}
+        </Badge>
       </div>
-      <Badge variant="outline" className="text-xs">
-        {userTier}
-      </Badge>
+      {variants.length > 1 && (
+        <div className="text-xs text-muted-foreground">
+          {variants.length} strain{variants.length > 1 ? 's' : ''} available
+        </div>
+      )}
     </div>
   )
 }
-
 
 // Memoized loading skeleton component
 const LoadingSkeleton = () => (
@@ -130,34 +173,40 @@ const LoadingSkeleton = () => (
   </div>
 )
 
-
-
-
 // Memoized category section component
 const CategorySection = React.memo(({ section, userTier, role }: { section: CategoryData; userTier: string, role: string }) => {
   const getCategoryMetadata = useCallback((categoryName: string) => {
-    return defaultCategoryMetadata[getCategory(categoryName)] || {
+    return defaultCategoryMetadata[categoryName] || {
       description: `Explore our ${getCategory(categoryName)} collection`,
-      // icon: "📦"
+      icon: "📦"
     }
   }, [])
 
-  const metadata = getCategoryMetadata(getCategory(section.name))
-
-
+  const metadata = getCategoryMetadata(section.name)
 
   // Enhanced VideoCard with tier pricing
-  const EnhancedVideoCard = useCallback(({ product}: { product: Product }) => (
+  const EnhancedVideoCard = useCallback(({ product }: { product: Product }) => (
     <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
       <VideoCard product={product} />
-      <div className="border-t border-border">
-        <PriceDisplay product={product} userTier={userTier} role={role} />
+      <div className="p-4 border-t border-border">
+        <PriceDisplay variants={product.variants} userTier={userTier} role={role} />
+        {product.variants.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {product.variants.slice(0, 3).map((variant, index) => (
+              <Badge key={variant.id} variant="secondary" className="text-xs">
+                {variant.subcategory}
+              </Badge>
+            ))}
+            {product.variants.length > 3 && (
+              <Badge variant="outline" className="text-xs">
+                +{product.variants.length - 3} more
+              </Badge>
+            )}
+          </div>
+        )}
       </div>
     </div>
-  ), [userTier])
-
-
-  
+  ), [userTier, role])
 
   return (
     <section className="space-y-6">
@@ -177,6 +226,10 @@ const CategorySection = React.memo(({ section, userTier, role }: { section: Cate
             <span className="flex items-center gap-1">
               <Star className="w-3 h-3" />
               {userTier} Tier Pricing
+            </span>
+            <span>•</span>
+            <span>
+              {section.products.reduce((acc, product) => acc + product.variants.length, 0)} total strains
             </span>
           </div>
         </div>
@@ -282,7 +335,7 @@ export default function VideoGrid({ category }: VideoGridProps) {
         
         // Create sections for each category
         const sections = Object.entries(groupedByCategory).map(([categoryName, products]) => {
-          const metadata = defaultCategoryMetadata[getCategory(categoryName)] || {
+          const metadata = defaultCategoryMetadata[categoryName] || {
             description: `Explore our ${getCategory(categoryName)} collection`,
             icon: "📦"
           }
@@ -298,7 +351,7 @@ export default function VideoGrid({ category }: VideoGridProps) {
         setCategoryData(sections)
       } else {
         // Single category view
-        const metadata = defaultCategoryMetadata[getCategory(category)] || {
+        const metadata = defaultCategoryMetadata[category] || {
           description: `Explore our ${getCategory(category)} collection`,
           icon: "📦"
         }
@@ -362,8 +415,6 @@ export default function VideoGrid({ category }: VideoGridProps) {
       </div>
     )
   }
-
-  
 
   return (
     <div className="w-full space-y-12">

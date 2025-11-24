@@ -54,7 +54,9 @@ export default function CartPage() {
             <ShoppingCart className="w-8 h-8 text-accent" />
             Shopping Cart
           </h1>
-          <p className="text-muted-foreground mt-2">{items.length} item(s) in cart</p>
+          <p className="text-muted-foreground mt-2">
+            {items.length} item{items.length > 1 ? 's' : ''} in cart
+          </p>
         </div>
 
         {/* Minimum Order Warning */}
@@ -80,16 +82,38 @@ export default function CartPage() {
                       <div className="flex-1 min-w-0">
                         <Link href={`/products/${item.slug}`}>
                           <h3 className="font-bold text-foreground hover:text-accent transition text-sm md:text-base line-clamp-2">
-                            {item.name}
+                            {item.productName}
                           </h3>
                         </Link>
-                        <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                          <p className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">{item.category}</Badge>
-                            {item.subcategory && <Badge variant="outline" className="text-xs">{item.subcategory}</Badge>}
+                        <div className="text-xs text-muted-foreground mt-2 space-y-2">
+                          {/* Strain Information */}
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs bg-green-500/10 text-green-700">
+                              {item.strain}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {item.category}
+                            </Badge>
+                          </div>
+                          
+                          {/* Product Specs */}
+                          <div className="flex flex-wrap gap-2">
+                            {item.weight && (
+                              <span className="flex items-center gap-1">
+                                📦 {item.weight}
+                              </span>
+                            )}
+                            {item.potency && (
+                              <span className="flex items-center gap-1">
+                                ⚡ {item.potency}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Price per unit */}
+                          <p className="text-accent font-medium">
+                            ${item.price.toFixed(2)} per unit
                           </p>
-                          {item.weight && <p>📦 {item.weight}</p>}
-                          {item.potency && <p>⚡ {item.potency}</p>}
                         </div>
                       </div>
 
@@ -99,6 +123,7 @@ export default function CartPage() {
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
                             className="p-2 text-foreground hover:bg-primary/60 transition"
+                            disabled={item.quantity <= 1}
                           >
                             <Minus size={16} />
                           </button>
@@ -107,7 +132,10 @@ export default function CartPage() {
                             type="number"
                             min="1"
                             value={item.quantity}
-                            onChange={(e) => updateQuantity(item.id, Number(e.target.value))}
+                            onChange={(e) => {
+                              const newQuantity = Math.max(1, Number(e.target.value) || 1)
+                              updateQuantity(item.id, newQuantity)
+                            }}
                             className="w-12 md:w-16 text-center bg-transparent border-none focus:outline-none text-foreground font-medium text-sm"
                           />
 
@@ -124,28 +152,49 @@ export default function CartPage() {
                           <p className="font-bold text-foreground text-lg text-accent">
                             ${(item.price * item.quantity).toFixed(2)}
                           </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {item.quantity} unit{item.quantity > 1 ? 's' : ''}
+                          </p>
                         </div>
                       </div>
 
                       {/* Delete Button */}
                       <button
                         onClick={() => removeFromCart(item.id)}
-                        className="text-destructive hover:opacity-70 transition p-2"
+                        className="text-destructive hover:opacity-70 transition p-2 self-start"
+                        title="Remove from cart"
                       >
                         <Trash2 size={20} />
                       </button>
                     </div>
+
+                    {/* Low Quantity Warning for this specific item */}
+                    {item.quantity < 10 && (
+                      <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs text-yellow-600">
+                        ⚠️ Minimum order for this product is 10 units
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
             </div>
 
-            {/* Continue Shopping */}
-            <Link href="/products" className="inline-block mt-6">
-              <Button variant="outline" className="bg-transparent border-border/50 hover:bg-primary/30">
-                Continue Shopping
+            {/* Cart Actions */}
+            <div className="flex flex-wrap gap-4 mt-6">
+              <Link href="/products">
+                <Button variant="outline" className="bg-transparent border-border/50 hover:bg-primary/30">
+                  Continue Shopping
+                </Button>
+              </Link>
+              
+              <Button
+                onClick={clearCart}
+                variant="outline"
+                className="bg-transparent text-destructive hover:bg-destructive/20 border-destructive/30"
+              >
+                Clear Entire Cart
               </Button>
-            </Link>
+            </div>
           </div>
 
           {/* Order Summary */}
@@ -157,24 +206,49 @@ export default function CartPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
-                <div className="space-y-3">
+                {/* Cart Items Summary */}
+                <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                  {items.map((item) => (
+                    <div key={item.id} className="flex justify-between items-start text-sm border-b border-border/20 pb-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">
+                          {item.productName}
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          {item.strain} • {item.quantity} unit{item.quantity > 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-medium text-foreground">
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </p>
+                        <p className="text-muted-foreground text-xs">
+                          ${item.price.toFixed(2)} each
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Totals */}
+                <div className="space-y-3 pt-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
+                    <span className="text-muted-foreground">Items ({items.length})</span>
                     <span className="text-foreground font-medium">${cartTotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Shipping</span>
-                    <span className="text-foreground font-medium">$0</span>
+                    <span className="text-foreground font-medium">Calculated at checkout</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Tax</span>
-                    <span className="text-foreground font-medium">$0</span>
+                    <span className="text-foreground font-medium">Calculated at checkout</span>
                   </div>
                 </div>
 
                 <div className="border-t border-border/30 pt-4">
                   <div className="flex justify-between font-bold text-lg">
-                    <span className="text-foreground">Total</span>
+                    <span className="text-foreground">Estimated Total</span>
                     <span className="text-accent text-2xl">${cartTotal.toFixed(2)}</span>
                   </div>
                 </div>
@@ -182,21 +256,16 @@ export default function CartPage() {
                 <Button
                   onClick={() => setShowApplyModal(true)}
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90 py-3 text-base font-semibold shadow-lg shadow-accent/20"
+                  disabled={hasLowQuantityItems}
                 >
-                  Proceed to Checkout
+                  {hasLowQuantityItems ? 'Adjust Quantities' : 'Proceed to Checkout'}
                 </Button>
 
-                <Button
-                  onClick={clearCart}
-                  variant="outline"
-                  className="w-full bg-transparent text-destructive hover:bg-destructive/20 border-destructive/30"
-                >
-                  Clear Cart
-                </Button>
-
-                <p className="text-xs text-muted-foreground text-center mt-4 p-3 bg-primary/20 rounded border border-border/30">
-                  💡 Minimum 10 units per order for bulk pricing. Contact support for large orders.
-                </p>
+                {hasLowQuantityItems && (
+                  <p className="text-xs text-yellow-600 text-center p-2 bg-yellow-500/10 rounded border border-yellow-500/20">
+                    ⚠️ Adjust quantities to meet 10-unit minimum
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

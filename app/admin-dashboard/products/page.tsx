@@ -28,10 +28,13 @@ export default function ProductsPage() {
     fetchProducts()
   }, [])
 
+  console.log(products);
+  
+
   const fetchProducts = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/admin/products")
+      const response = await fetch("/api/admin/products?includeVariants=true")
       if (!response.ok) throw new Error("Failed to fetch products")
       const data = await response.json()
       setProducts(data.products)
@@ -50,7 +53,7 @@ export default function ProductsPage() {
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({...formData, id: editingProduct?.id}),
       })
 
       if (!response.ok) throw new Error("Failed to save product")
@@ -78,14 +81,20 @@ export default function ProductsPage() {
   const filteredProducts = products.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchTerm.toLowerCase()),
+      p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.variants?.some((v: any) => 
+        v.subcategory.toLowerCase().includes(searchTerm.toLowerCase())
+      )
   )
 
   const stats = {
     total: products.length,
     active: products.filter((p) => p.status === "ACTIVE").length,
     inactive: products.filter((p) => p.status === "INACTIVE").length,
+    totalVariants: products.reduce((acc, p) => acc + (p.variants?.length || 0), 0),
   }
+
+
 
   const columns = [
     {
@@ -94,26 +103,84 @@ export default function ProductsPage() {
       render: (value: any, row: any) => (
         <div>
           <p className="font-semibold text-foreground">{value}</p>
-          <p className="text-xs text-muted-foreground">{row.category}</p>
+          <p className="text-xs text-muted-foreground capitalize">
+            {row.category.toLowerCase().replace(/_/g, " ")}
+          </p>
+          {row.variants?.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {row.variants.length} variant{row.variants.length > 1 ? 's' : ''}
+            </p>
+          )}
         </div>
       ),
     },
     {
-      key: "subcategory",
-      label: "Strain",
-      render: (value: any) => <Badge variant="outline">{value || "N/A"}</Badge>,
-    },
-    {
-      key: "priceGold",
-      label: "Pricing",
-      render: (value: any, row: any) => (
-        <div className="text-xs space-y-1">
-          <div className="text-yellow-400 font-semibold">Gold: ${value}</div>
-          <div className="text-purple-400 font-semibold">Plat: ${row.pricePlatinum}</div>
-          <div className="text-blue-400 font-semibold">Dia: ${row.priceDiamond}</div>
+      key: "variants",
+      label: "Variants",
+      render: (variants: any[]) => (
+        <div className="flex flex-wrap gap-1 max-w-[200px]">
+          {variants?.length > 0 ? (
+            
+            variants.map((variant, index) => (
+              <Badge key={index} variant="outline" className="text-xs">
+                {variant.subcategory}
+              </Badge>
+            ))
+          ) : (
+            <Badge variant="outline" className="text-xs text-muted-foreground">
+              No strains
+            </Badge>
+          )}
         </div>
       ),
     },
+    {
+      key: "pricingRange",
+      label: "Pricing Range",
+      render: (_value: any, row: any) => {
+        const variants = row.variants || []
+
+        if (!variants.length) {
+          return (
+            <span className="text-muted-foreground text-sm">
+              N/A
+            </span>
+          )
+        }
+
+        const allPrices = variants
+          .flatMap((v: any) => [
+            v.priceGold,
+            v.pricePlatinum,
+            v.priceDiamond,
+          ])
+          .filter((price: any) => price != null)
+          .map((price: any) => Number(price))
+
+        if (allPrices.length === 0) {
+          return (
+            <span className="text-muted-foreground text-sm">
+              No pricing
+            </span>
+          )
+        }
+
+        const minPrice = Math.min(...allPrices)
+        const maxPrice = Math.max(...allPrices)
+
+        return (
+          <div className="text-xs space-y-1">
+            <div className="font-semibold text-foreground">
+              ${minPrice.toFixed(2)} - ${maxPrice.toFixed(2)}
+            </div>
+            <div className="text-muted-foreground">
+              {variants.length} variant{variants.length > 1 ? "s" : ""}
+            </div>
+          </div>
+        )
+      },
+    },
+
     {
       key: "status",
       label: "Status",
@@ -128,6 +195,15 @@ export default function ProductsPage() {
                 : "bg-red-500/20 text-red-400 border-red-500/30"
           }
         >
+          {value}
+        </Badge>
+      ),
+    },
+    {
+      key: "minimumQty",
+      label: "Min Qty",
+      render: (value: number) => (
+        <Badge variant="secondary" className="text-xs">
           {value}
         </Badge>
       ),
@@ -158,7 +234,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-card border-border/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">Total Products</CardTitle>
@@ -191,6 +267,16 @@ export default function ProductsPage() {
               <p className="text-xs text-muted-foreground mt-1">Not selling</p>
             </CardContent>
           </Card>
+
+          <Card className="bg-card border-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Variants</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-400">{stats.totalVariants}</div>
+              <p className="text-xs text-muted-foreground mt-1">Across all products</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -210,10 +296,10 @@ export default function ProductsPage() {
       {!showForm && (
         <DataTable
           title="All Products"
-          description={`Total: ${filteredProducts.length} products`}
+          description={`Total: ${filteredProducts.length} products, ${stats.totalVariants} variants`}
           columns={columns}
           data={filteredProducts}
-          searchPlaceholder="Search by name or category..."
+          searchPlaceholder="Search by name, category, or strain..."
           onSearch={setSearchTerm}
           actions={(row) => (
             <div className="flex items-center justify-end gap-2">
@@ -245,7 +331,10 @@ export default function ProductsPage() {
       <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogTitle>Delete Product</AlertDialogTitle>
-          <AlertDialogDescription>Are you sure you want to delete this product? This action cannot be undone.</AlertDialogDescription>
+          <AlertDialogDescription>
+            Are you sure you want to delete this product? This will also delete all associated variants. 
+            This action cannot be undone.
+          </AlertDialogDescription>
           <div className="flex gap-3 justify-end">
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction

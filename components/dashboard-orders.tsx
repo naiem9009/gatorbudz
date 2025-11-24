@@ -4,11 +4,13 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { FileText, CreditCard, Banknote, ExternalLink } from "lucide-react"
+import { FileText, CreditCard, Banknote, ExternalLink, Package } from "lucide-react"
 
 interface OrderItem {
   id: string
   productId: string
+  variantId?: string
+  strain?: string
   quantity: number
   unitPrice: number
   totalPrice: number
@@ -17,7 +19,9 @@ interface OrderItem {
     id: string
     name: string
     category: string
-    subcategory: string
+    weight?: string
+    potency?: string
+    slug: string
   }
 }
 
@@ -77,6 +81,22 @@ export default function DashboardOrders() {
     CANCELLED: "bg-gray-500/10 text-gray-700 border-gray-500/20",
   }
 
+  // Helper function to format order title
+  const getOrderTitle = (order: Order) => {
+    const firstItem = order.items[0]
+    if (!firstItem) return "Order"
+    
+    const remainingCount = Math.max(0, order.items.length - 1)
+    const baseName = firstItem.product?.name || "Product"
+    const strain = firstItem.strain ? ` - ${firstItem.strain}` : ""
+    
+    if (remainingCount > 0) {
+      return `${baseName}${strain} + ${remainingCount} more`
+    }
+    
+    return `${baseName}${strain}`
+  }
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -106,8 +126,6 @@ export default function DashboardOrders() {
       {orders.length > 0 ? (
         <div className="space-y-4">
           {orders.map((order) => {
-            const firstItem = order.items[0]
-            const remainingCount = Math.max(0, order.items.length - 1)
             const total = order.totalAmount ?? order.totalPrice
             const hasInvoice = order.status === "APPROVED" && order.invoice
 
@@ -120,11 +138,7 @@ export default function DashboardOrders() {
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-3 flex-wrap">
                       <h3 className="font-bold text-foreground text-lg">
-                        {firstItem?.product?.name
-                          ? remainingCount > 0
-                            ? `${firstItem.product.name} + ${remainingCount} more`
-                            : firstItem.product.name + ` - (${firstItem.product.subcategory})`
-                          : "Order"}
+                        {getOrderTitle(order)}
                       </h3>
                       <Badge variant="outline" className={statusColors[order.status]}>
                         {order.status}
@@ -157,7 +171,6 @@ export default function DashboardOrders() {
                       </p>
                       <p className="text-xl font-bold text-accent">${total.toFixed(2)}</p>
                     </div>
-                    
                   </div>
                 </div>
 
@@ -232,15 +245,41 @@ export default function DashboardOrders() {
                   </div>
                 )}
 
-                {/* Order Items */}
-                <div className="mt-4 pt-4 border-t border-border space-y-2">
+                {/* Order Items with Strain Information */}
+                <div className="mt-4 pt-4 border-t border-border space-y-3">
                   {order.items.map((item) => (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <div>
-                        <span className="font-medium text-foreground">{item.product?.name || "Product"}</span>
-                        <span className="ml-2 text-muted-foreground">x {item.quantity}</span>
+                    <div key={item.id} className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-foreground">
+                            {item.product?.name || "Product"}
+                          </span>
+                          {item.strain && (
+                            <Badge variant="outline" className="text-xs bg-green-500/10 text-green-700">
+                              {item.strain}
+                            </Badge>
+                          )}
+                          <span className="text-muted-foreground text-sm">x {item.quantity}</span>
+                        </div>
+                        {/* Product details */}
+                        {(item.product?.weight || item.product?.potency) && (
+                          <div className="flex gap-3 text-xs text-muted-foreground">
+                            {item.product?.weight && <span>📦 {item.product.weight}</span>}
+                            {item.product?.potency && <span>⚡ {item.product.potency}</span>}
+                          </div>
+                        )}
+                        {item.notes && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Note: {item.notes}
+                          </p>
+                        )}
                       </div>
-                      <div className="font-medium text-foreground">${item.totalPrice.toFixed(2)}</div>
+                      <div className="text-right">
+                        <div className="font-medium text-foreground">${item.totalPrice.toFixed(2)}</div>
+                        <div className="text-xs text-muted-foreground">
+                          ${item.unitPrice.toFixed(2)} each
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -258,7 +297,7 @@ export default function DashboardOrders() {
         </div>
       ) : (
         <div className="text-center py-12 bg-card border border-border rounded-lg">
-          <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">No Orders Yet</h3>
           <p className="text-muted-foreground mb-6">Start shopping to see your orders here</p>
           <Link href="/products">

@@ -12,17 +12,57 @@ export async function GET(request: NextRequest) {
 
     const orders = await prisma.orderRequest.findMany({
       include: {
-        user: { select: { id: true, email: true, name: true } },
+        user: { 
+          select: { 
+            id: true, 
+            email: true, 
+            name: true,
+            company: true,
+            tier: true
+          } 
+        },
         items: {
-          include: { product: true },
+          include: { 
+            product: {
+              select: {
+                id: true,
+                name: true,
+                category: true,
+                weight: true,
+                potency: true,
+                slug: true,
+                // Include variants if you want to show available options
+                variants: {
+                  select: {
+                    id: true,
+                    subcategory: true,
+                    priceGold: true,
+                    pricePlatinum: true,
+                    priceDiamond: true
+                  }
+                }
+              }
+            }
+          }
         },
       },
       orderBy: { createdAt: "desc" },
     })
 
+    // Transform orders to include variant data properly
     const normalized = orders.map((order) => ({
       ...order,
       totalAmount: order.totalPrice,
+      items: order.items.map(item => ({
+        ...item,
+        strain: item.strain,
+        variantId: item.variantId,
+        // Add pricing context - what the user paid vs current prices
+        pricingContext: item.variantId && item.product.variants ? {
+          paidPrice: item.unitPrice,
+          currentPrices: item.product.variants.find(v => v.id === item.variantId) || null
+        } : null
+      }))
     }))
 
     return NextResponse.json({ orders: normalized })

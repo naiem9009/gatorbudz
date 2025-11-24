@@ -18,6 +18,8 @@ export default function Header() {
     setIsUserMenuOpen(false)
     setIsMenuOpen(false)
   }
+  
+  
 
   return (
     <header className="sticky top-0 z-50 bg-background border-b border-border">
@@ -55,7 +57,7 @@ export default function Header() {
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition"
               >
                 <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center border">
-                  {user.image ? (
+                  {isAuthenticated && user.image ? (
                     <Image
                       src={user.image}
                       alt="Profile"

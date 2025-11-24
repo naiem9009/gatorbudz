@@ -49,9 +49,18 @@ export async function GET(request: NextRequest) {
       videoUrl: true,
       category: true,
       slug: true,
-      subcategory: true,
+      weight: true,
+      potency: true,
+      minimumQty: true,
+      variants: {
+        select: {
+          id: true,
+          subcategory: true,
+        }
+      }
     }
 
+    // Conditionally include prices based on user role
     const priceSelect = session && ["VERIFIED", "MANAGER", "ADMIN"].includes(session.user.role) ? {
       priceGold: true,
       pricePlatinum: true,
@@ -62,22 +71,35 @@ export async function GET(request: NextRequest) {
       where,
       select: {
         ...baseSelect,
-        ...priceSelect,
+        variants: {
+          select: {
+            id: true,
+            subcategory: true,
+            ...priceSelect,
+          }
+        }
       },
-      // Use cursor-based pagination for better performance
-      orderBy: { id: "asc" },
+      orderBy: { createdAt: "desc" },
     })
+
+    // Transform the data to match the expected frontend structure if needed
+    // This maintains backward compatibility with existing frontend
+    const transformedProducts = products.map(product => ({
+      ...product,
+      // If you need to flatten variants for backward compatibility, you can do it here
+      // For example, if frontend expects a single subcategory instead of variants array:
+      // subcategory: product.variants[0]?.subcategory || null,
+    }))
 
     // Cache public responses
     if (!session) {
       cache.set(cacheKey, {
-        data: products,
+        data: transformedProducts,
         timestamp: Date.now()
       })
     }
-    
 
-    return NextResponse.json(products)
+    return NextResponse.json(transformedProducts)
   } catch (error) {
     console.error("Products API Error:", error)
     return NextResponse.json(
@@ -85,95 +107,95 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
-}
+} 
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await auth.api.getSession({ headers: request.headers })
+// export async function POST(request: NextRequest) {
+//   try {
+//     const session = await auth.api.getSession({ headers: request.headers })
 
-    if (!session?.user?.role || !["MANAGER", "ADMIN"].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: "Unauthorized" }, 
-        { status: 403 }
-      )
-    }
+//     if (!session?.user?.role || !["MANAGER", "ADMIN"].includes(session.user.role)) {
+//       return NextResponse.json(
+//         { error: "Unauthorized" }, 
+//         { status: 403 }
+//       )
+//     }
 
-    const body = await request.json()
-    const { 
-      name, 
-      description, 
-      videoUrl, 
-      category, 
-      priceGold, 
-      pricePlatinum, 
-      priceDiamond 
-    } = body
+//     const body = await request.json()
+//     const { 
+//       name, 
+//       description, 
+//       videoUrl, 
+//       category, 
+//       priceGold, 
+//       pricePlatinum, 
+//       priceDiamond 
+//     } = body
 
-    // Input validation
-    if (!name?.trim() || !category?.trim()) {
-      return NextResponse.json(
-        { error: "Name and category are required" }, 
-        { status: 400 }
-      )
-    }
+//     // Input validation
+//     if (!name?.trim() || !category?.trim()) {
+//       return NextResponse.json(
+//         { error: "Name and category are required" }, 
+//         { status: 400 }
+//       )
+//     }
 
-    if (typeof priceGold !== 'number' || priceGold < 0 ||
-        typeof pricePlatinum !== 'number' || pricePlatinum < 0 ||
-        typeof priceDiamond !== 'number' || priceDiamond < 0) {
-      return NextResponse.json(
-        { error: "Valid prices are required" }, 
-        { status: 400 }
-      )
-    }
+//     if (typeof priceGold !== 'number' || priceGold < 0 ||
+//         typeof pricePlatinum !== 'number' || pricePlatinum < 0 ||
+//         typeof priceDiamond !== 'number' || priceDiamond < 0) {
+//       return NextResponse.json(
+//         { error: "Valid prices are required" }, 
+//         { status: 400 }
+//       )
+//     }
 
-    // generate product slug
-    const productSlug = generateProductSlug(name)
+//     // generate product slug
+//     const productSlug = generateProductSlug(name)
 
-    const product = await prisma.product.create({
-      data: {
-        name: name.trim(),
-        description: description?.trim(),
-        videoUrl: videoUrl?.trim(),
-        category: category.trim(),
-        priceGold,
-        pricePlatinum,
-        priceDiamond,
-        slug: productSlug,
-        status: "ACTIVE",
-      },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        videoUrl: true,
-        category: true,
-        priceGold: true,
-        pricePlatinum: true,
-        priceDiamond: true,
-        slug: true,
-      }
-    })
+//     const product = await prisma.product.create({
+//       data: {
+//         name: name.trim(),
+//         description: description?.trim(),
+//         videoUrl: videoUrl?.trim(),
+//         category: category.trim(),
+//         priceGold,
+//         pricePlatinum,
+//         priceDiamond,
+//         slug: productSlug,
+//         status: "ACTIVE",
+//       },
+//       select: {
+//         id: true,
+//         name: true,
+//         description: true,
+//         videoUrl: true,
+//         category: true,
+//         priceGold: true,
+//         pricePlatinum: true,
+//         priceDiamond: true,
+//         slug: true,
+//       }
+//     })
 
-    // Clear cache on new product creation
-    cache.clear()
+//     // Clear cache on new product creation
+//     cache.clear()
 
-    return NextResponse.json(product, { status: 201 })
-  } catch (error) {
-    console.error("Create Product Error:", error)
+//     return NextResponse.json(product, { status: 201 })
+//   } catch (error) {
+//     console.error("Create Product Error:", error)
     
-    // Handle Prisma errors
-    if (error instanceof Error) {
-      if (error.message.includes('Unique constraint')) {
-        return NextResponse.json(
-          { error: "Product with this name already exists" }, 
-          { status: 409 }
-        )
-      }
-    }
+//     // Handle Prisma errors
+//     if (error instanceof Error) {
+//       if (error.message.includes('Unique constraint')) {
+//         return NextResponse.json(
+//           { error: "Product with this name already exists" }, 
+//           { status: 409 }
+//         )
+//       }
+//     }
 
-    return NextResponse.json(
-      { error: "Failed to create product" }, 
-      { status: 500 }
-    )
-  }
-}
+//     return NextResponse.json(
+//       { error: "Failed to create product" }, 
+//       { status: 500 }
+//     )
+//   }
+// }

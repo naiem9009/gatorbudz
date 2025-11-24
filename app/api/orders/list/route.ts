@@ -29,18 +29,38 @@ export async function GET(request: NextRequest) {
       include: {
         items: {
           include: {
-            product: { select: { id: true, name: true, category: true, subcategory: true } },
+            product: { 
+              select: { 
+                id: true, 
+                name: true, 
+                category: true,
+                weight: true,
+                potency: true,
+                slug: true
+              } 
+            },
           },
+          orderBy: {
+            createdAt: 'asc'
+          }
         },
         invoice: true, 
       },
       orderBy: { createdAt: "desc" },
     })
 
+    // Transform orders to include variant data
     const normalized = orders.map((order) => ({
       ...order,
       totalAmount: order.totalPrice,
+      items: order.items.map(item => ({
+        ...item,
+        // Include strain and variant data
+        strain: item.strain,
+        variantId: item.variantId
+      }))
     }))
+    
 
     return NextResponse.json({ success: true, data: normalized })
   } catch (error) {

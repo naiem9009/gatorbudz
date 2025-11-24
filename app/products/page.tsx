@@ -8,10 +8,18 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, X, Filter, SortAsc, Crown, Star, Zap } from "lucide-react"
+import { Search, X, Filter, SortAsc, Crown, Star, Zap, Package } from "lucide-react"
 import VideoCardComponent from "@/components/video-card"
 import { useAuth } from "@/lib/auth-context"
 import { getCategory } from "@/lib/utils"
+
+interface ProductVariant {
+  id: string
+  subcategory: string
+  priceGold?: number
+  pricePlatinum?: number
+  priceDiamond?: number
+}
 
 interface Product {
   id: string
@@ -19,10 +27,11 @@ interface Product {
   description: string
   videoUrl: string
   category: string
-  priceGold?: number
-  pricePlatinum?: number
-  priceDiamond?: number
   slug: string
+  weight?: string
+  potency?: string
+  minimumQty: number
+  variants: ProductVariant[]
 }
 
 // Memoized loading skeleton
@@ -72,19 +81,18 @@ const CategoryButtons = ({
 )
 
 // Price display component based on user tier
-const PriceDisplay = ({ product, userTier, role }: { product: Product; userTier: string, role: string }) => {
-  
-  const getPriceForTier = useCallback(() => {
+const PriceDisplay = ({ variants, userTier, role }: { variants: ProductVariant[]; userTier: string, role: string }) => {
+  const getPriceForTier = useCallback((variant: ProductVariant) => {
     switch (userTier) {
       case "DIAMOND":
-        return product.priceDiamond
+        return variant.priceDiamond
       case "PLATINUM":
-        return product.pricePlatinum
+        return variant.pricePlatinum
       case "GOLD":
       default:
-        return product.priceGold
+        return variant.priceGold
     }
-  }, [product, userTier])
+  }, [userTier])
 
   const getTierIcon = useCallback((tier: string) => {
     switch (tier) {
@@ -98,9 +106,28 @@ const PriceDisplay = ({ product, userTier, role }: { product: Product; userTier:
     }
   }, [])
 
-  const price = getPriceForTier()
-  
-  if (!price && price !== 0) {
+  // Calculate price range across all variants
+  const priceRange = useMemo(() => {
+    const allPrices = variants.flatMap(variant => {
+      const price = getPriceForTier(variant)
+      return price !== undefined ? [price] : []
+    })
+
+    if (allPrices.length === 0) {
+      return null
+    }
+
+    const minPrice = Math.min(...allPrices)
+    const maxPrice = Math.max(...allPrices)
+
+    return {
+      min: minPrice,
+      max: maxPrice,
+      hasRange: minPrice !== maxPrice
+    }
+  }, [variants, getPriceForTier])
+
+  if (!priceRange) {
     return (
       <div className="text-sm text-muted-foreground">
         {role === "PUBLIC" ? "Contact the admin to verify your account and enable full access" : "Login to view prices"}
@@ -109,14 +136,26 @@ const PriceDisplay = ({ product, userTier, role }: { product: Product; userTier:
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1 text-accent font-semibold">
-        {getTierIcon(userTier)}
-        <span>${price.toFixed(2)}</span>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 text-accent font-semibold">
+          {getTierIcon(userTier)}
+          <span>
+            {priceRange.hasRange 
+              ? `$${priceRange.min.toFixed(2)} - $${priceRange.max.toFixed(2)}`
+              : `$${priceRange.min.toFixed(2)}`
+            }
+          </span>
+        </div>
+        <Badge variant="outline" className="text-xs">
+          {userTier}
+        </Badge>
       </div>
-      <Badge variant="outline" className="text-xs">
-        {userTier}
-      </Badge>
+      {variants.length > 1 && (
+        <div className="text-xs text-muted-foreground">
+          {variants.length} strain{variants.length > 1 ? 's' : ''} available
+        </div>
+      )}
     </div>
   )
 }
@@ -145,7 +184,6 @@ export default function ProductsPage() {
 
   // Get user tier for price display
   const userTier = user?.tier || "GOLD"
-  
 
   // Memoized filtered and sorted products
   const filteredProducts = useMemo(() => {
@@ -162,26 +200,31 @@ export default function ProductsPage() {
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(term) ||
-          p.description.toLowerCase().includes(term)
+          p.description.toLowerCase().includes(term) ||
+          p.variants.some(v => v.subcategory.toLowerCase().includes(term))
       )
     }
 
     // Sort products based on user tier prices
     const sorted = [...filtered].sort((a, b) => {
-      const getPrice = (product: Product) => {
-        switch (userTier) {
-          case "DIAMOND":
-            return product.priceDiamond || 0
-          case "PLATINUM":
-            return product.pricePlatinum || 0
-          case "GOLD":
-          default:
-            return product.priceGold || 0
-        }
+      const getMinPrice = (product: Product) => {
+        const prices = product.variants.flatMap(variant => {
+          switch (userTier) {
+            case "DIAMOND":
+              return variant.priceDiamond || []
+            case "PLATINUM":
+              return variant.pricePlatinum || []
+            case "GOLD":
+            default:
+              return variant.priceGold || []
+          }
+        }).filter(price => price !== undefined) as number[]
+
+        return prices.length > 0 ? Math.min(...prices) : 0
       }
 
-      const priceA = getPrice(a)
-      const priceB = getPrice(b)
+      const priceA = getMinPrice(a)
+      const priceB = getMinPrice(b)
 
       switch (sortBy) {
         case "price-low":
@@ -195,6 +238,11 @@ export default function ProductsPage() {
 
     return sorted
   }, [products, searchTerm, selectedCategory, sortBy, userTier])
+
+  // Calculate total variants count
+  const totalVariants = useMemo(() => {
+    return products.reduce((acc, product) => acc + product.variants.length, 0)
+  }, [products])
 
   // Optimized Intersection Observer for autoplay
   useEffect(() => {
@@ -313,12 +361,26 @@ export default function ProductsPage() {
 
   const hasActiveFilters = searchTerm || selectedCategory !== "All"
 
-  // Enhanced VideoCard component with tier-based pricing
-  const EnhancedVideoCard = useCallback(({ product, role }: { product: Product, role:string }) => (
+  // Enhanced VideoCard component with tier-based pricing and variants display
+  const EnhancedVideoCard = useCallback(({ product, role }: { product: Product, role: string }) => (
     <div className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
       <VideoCardComponent product={product} />
-      <div className="border-t border-border">
-        <PriceDisplay product={product} userTier={userTier} role={role} />
+      <div className="p-4 border-t border-border space-y-3">
+        <PriceDisplay variants={product.variants} userTier={userTier} role={role} />
+        {product.variants.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {product.variants.slice(0, 3).map((variant, index) => (
+              <Badge key={variant.id} variant="secondary" className="text-xs">
+                {variant.subcategory}
+              </Badge>
+            ))}
+            {product.variants.length > 3 && (
+              <Badge variant="outline" className="text-xs">
+                +{product.variants.length - 3} more
+              </Badge>
+            )}
+          </div>
+        )}
       </div>
     </div>
   ), [userTier])
@@ -330,6 +392,12 @@ export default function ProductsPage() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
         {/* Page Header */}
         <div className="text-center">
+          <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
+            Premium Products
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
+            Discover our curated selection of premium products with multiple strain options
+          </p>
           
           {/* Tier Information */}
           {user && (
@@ -351,7 +419,7 @@ export default function ProductsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
             <Input
               type="text"
-              placeholder="Search products by name or description..."
+              placeholder="Search products, descriptions, or strains..."
               value={localSearchTerm}
               onChange={(e) => setLocalSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-background border-border"
@@ -375,7 +443,7 @@ export default function ProductsPage() {
             </SelectContent>
           </Select>
 
-          {/* Sort - Removed THCA option */}
+          {/* Sort */}
           <Select value={sortBy} onValueChange={handleSortChange}>
             <SelectTrigger className="bg-background border-border">
               <div className="flex items-center gap-2">
@@ -421,9 +489,12 @@ export default function ProductsPage() {
               <Badge variant="secondary" className="text-sm">
                 {filteredProducts.length} {filteredProducts.length === 1 ? 'Product' : 'Products'}
               </Badge>
+              <Badge variant="outline" className="text-sm">
+                {totalVariants} Total Strains
+              </Badge>
               {hasActiveFilters && (
                 <span className="text-sm text-muted-foreground">
-                  Filtered from {products.length} total
+                  Filtered from {products.length} total products
                 </span>
               )}
             </div>

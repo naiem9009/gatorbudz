@@ -31,7 +31,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           user: true,
           items: {
             include: {
-              product: true,
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  category: true,
+                  weight: true,
+                  potency: true
+                }
+              },
             },
           },
           invoice: {
@@ -93,7 +101,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             meta: { 
               previousStatus: order.status, 
               newStatus: "APPROVED",
-              invoiceNumber 
+              invoiceNumber,
+              itemCount: order.items.length,
+              totalAmount: order.totalPrice
             },
           },
         })
@@ -112,7 +122,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             user: true,
             items: {
               include: {
-                product: true,
+                product: {
+                  select: {
+                    id: true,
+                    name: true,
+                    category: true,
+                    weight: true,
+                    potency: true
+                  }
+                },
               },
             },
             invoice: {
@@ -131,7 +149,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
             action: `UPDATE_ORDER_${status || "NOTES"}`,
             entity: "OrderRequest",
             entityId: (await params).id,
-            meta: { previousStatus: order.status, newStatus: status },
+            meta: { 
+              previousStatus: order.status, 
+              newStatus: status,
+              itemCount: order.items.length,
+              totalAmount: order.totalPrice
+            },
           },
         })
 
@@ -151,12 +174,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           to: result.order.user.email,
           invoiceNumber: result.invoice.invoiceNumber,
           customerName: result.order.user.name || result.order.user.email,
+          companyName: result.order.user.company || undefined,
           orderId: result.order.orderId,
           totalAmount: result.order.totalPrice,
           dueDate: result.invoice.dueDate,
-          orderDate: result.order.createdAt.toDateString(),
-          items: result.order.items.map((item:any) => ({
+          orderDate: result.order.createdAt,
+          items: result.order.items.map((item: any) => ({
             name: item.product?.name || "Product",
+            strain: item.strain, // Include strain information
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             totalPrice: item.totalPrice,

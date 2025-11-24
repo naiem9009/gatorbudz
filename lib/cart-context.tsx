@@ -6,24 +6,26 @@ import { useAuth } from "./auth-context"
 
 export interface CartItem {
   id: string
+  productId: string
+  variantId: string
   name: string
   price: number
   quantity: number
   videoUrl: string
   category: string
   slug: string
-  subcategory?: string
+  strain: string
   weight?: string
   potency?: string
-  originalPrice?: number 
-
+  originalPrice?: number
+  productName: string
 }
 
 interface CartContextType {
   items: CartItem[]
-  addToCart: (product: any, quantity: number) => void
-  removeFromCart: (productId: string) => void
-  updateQuantity: (productId: string, quantity: number) => void
+  addToCart: (product: any, variant: any, quantity: number) => void
+  removeFromCart: (cartItemId: string) => void
+  updateQuantity: (cartItemId: string, quantity: number) => void
   clearCart: () => void
   cartTotal: number
   cartCount: number
@@ -57,51 +59,83 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items, isHydrated])
 
-  const addToCart = (product: any, quantity = 1) => {
-    if (!product || !product.id) {
-      console.error("Invalid product:", product)
+  const addToCart = (product: any, variant: any, quantity = 1) => {
+    if (!product || !product.id || !variant || !variant.id) {
+      console.error("Invalid product or variant:", { product, variant })
       return
     }
 
-    const normalizedProduct: CartItem = {
-      id: String(product.id),
-      name: product.name || "Unknown Product",
-      price: Number(user?.tier === "GOLD" ? product.priceGold : user?.tier === "DIAMOND" ? product.priceDiamond : product.pricePlatinum) || 0,
+    // Generate unique cart item ID combining product and variant
+    const cartItemId = `${product.id}_${variant.id}`
+    
+    // Calculate price based on user tier
+    const getPriceForTier = () => {
+      switch (user?.tier) {
+        case "DIAMOND":
+          return variant.priceDiamond || 0
+        case "PLATINUM":
+          return variant.pricePlatinum || 0
+        case "GOLD":
+        default:
+          return variant.priceGold || 0
+      }
+    }
+
+    const price = getPriceForTier()
+
+    if (!price || price === 0) {
+      console.error("No price available for this variant:", variant)
+      return
+    }
+
+    const normalizedCartItem: CartItem = {
+      id: cartItemId,
+      productId: String(product.id),
+      variantId: String(variant.id),
+      name: `${product.name} - ${variant.subcategory}`,
+      productName: product.name,
+      price: Number(price),
       quantity: Math.max(1, Number(quantity) || 1),
-      videoUrl: product.videoUrl || product.image || "",
+      videoUrl: product.videoUrl || "",
       category: product.category || "Uncategorized",
       slug: product.slug || "unknown-product",
-      subcategory: product.subcategory,
+      strain: variant.subcategory || "Unknown Strain",
       weight: product.weight,
       potency: product.potency,
-      originalPrice: Number(user?.tier === "GOLD" ? product.priceGold : user?.tier === "DIAMOND" ? product.priceDiamond : product.pricePlatinum) || 0,
+      originalPrice: Number(price),
     }
 
     setItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item.id === normalizedProduct.id)
+      const existingItem = prevItems.find((item) => item.id === cartItemId)
 
       if (existingItem) {
         return prevItems.map((item) =>
-          item.id === normalizedProduct.id ? { ...item, quantity: item.quantity + normalizedProduct.quantity } : item,
+          item.id === cartItemId 
+            ? { ...item, quantity: item.quantity + normalizedCartItem.quantity } 
+            : item
         )
       }
 
-      return [...prevItems, normalizedProduct]
+      return [...prevItems, normalizedCartItem]
     })
   }
 
-  const removeFromCart = (productId: string) => {
-    setItems((prevItems) => prevItems.filter((item) => item.id !== productId))
+  const removeFromCart = (cartItemId: string) => {
+    setItems((prevItems) => prevItems.filter((item) => item.id !== cartItemId))
   }
 
-  const updateQuantity = (productId: string, quantity: number) => {
+  const updateQuantity = (cartItemId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeFromCart(productId)
+      removeFromCart(cartItemId)
       return
     }
 
     setItems((prevItems) =>
-      prevItems.map((item) => (item.id === productId ? { ...item, quantity: Math.max(1, quantity) } : item)),
+      prevItems.map((item) => 
+        item.id === cartItemId 
+          ? { ...item, quantity: Math.max(1, quantity) } 
+          : item
+      ),
     )
   }
 

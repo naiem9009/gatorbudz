@@ -1,55 +1,59 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
-import { prisma } from "@/lib/db"
+import {prisma} from "@/lib/db"
 import { z } from "zod"
 import { generateOrderNumber } from "@/lib/utils"
 
 const orderItemSchema = z.object({
   productId: z.string(),
+  variantId: z.string(), 
   quantity: z.coerce.number().int().positive(),
   unitPrice: z.coerce.number().positive(),
+  strain: z.string(), 
   notes: z.string().optional(),
 })
 
 const cartItemSchema = z.object({
   id: z.string(),
+  productId: z.string(),
+  variantId: z.string(),
   quantity: z.coerce.number().int().positive(),
   price: z.coerce.number().positive(),
+  strain: z.string(),
   notes: z.string().optional(),
 })
 
+// GET all orders
 export async function GET(request: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: request.headers })
-
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const status = searchParams.get("status")
-    const userId = searchParams.get("userId")
-
-    const where: any = {}
-
-    // Users can only see their own orders
-    if (session.user.role === "VERIFIED") {
-      where.userId = session.user.id
-    } else if (userId && ["MANAGER", "ADMIN"].includes(session.user.role)) {
-      where.userId = userId
-    }
-
-    if (status) {
-      where.status = status
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     }
 
     const orders = await prisma.orderRequest.findMany({
-      where,
       include: {
-        user: { select: { id: true, email: true, name: true, company: true, tier: true } },
+        user: { 
+          select: { 
+            id: true, 
+            email: true, 
+            name: true, 
+            company: true,
+            tier: true 
+          } 
+        },
         items: {
-          include: {
-            product: { select: { id: true, name: true, category: true } },
+          include: { 
+            product: {
+              select: {
+                id: true,
+                name: true,
+                category: true,
+                weight: true,
+                potency: true,
+                slug: true
+              }
+            }
           },
         },
       },
@@ -61,8 +65,9 @@ export async function GET(request: NextRequest) {
       totalAmount: order.totalPrice,
     }))
 
-    return NextResponse.json(normalized)
+    return NextResponse.json({ orders: normalized })
   } catch (error) {
+    console.error("Error fetching orders:", error)
     return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 })
   }
 }
@@ -76,6 +81,20 @@ export async function POST(request: NextRequest) {
     }
 
     const rawBody = await request.json()
+
+    // check company name exist or not
+    const userRecord = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { company: true },
+    })
+
+    // create company name if not exist
+    if (!userRecord?.company || userRecord.company.trim() === "") {
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: { company: rawBody.company },
+      })
+    }
     const sharedNotes =
       typeof rawBody?.notes === "string" && rawBody.notes.trim().length > 0 ? rawBody.notes.trim() : undefined
 
@@ -90,9 +109,11 @@ export async function POST(request: NextRequest) {
     } else if (Array.isArray(rawBody?.cartItems)) {
       const parsedCartItems = z.array(cartItemSchema).parse(rawBody.cartItems)
       orderPayload = parsedCartItems.map((item) => ({
-        productId: item.id,
+        productId: item.productId,
+        variantId: item.variantId,
         quantity: item.quantity,
         unitPrice: item.price,
+        strain: item.strain,
         notes: item.notes ?? sharedNotes,
       }))
     } else if (rawBody && typeof rawBody === "object" && "productId" in rawBody) {
@@ -119,16 +140,43 @@ export async function POST(request: NextRequest) {
 
     const orderItems = parseResult.data
     const uniqueProductIds = Array.from(new Set(orderItems.map((item) => item.productId)))
+    const uniqueVariantIds = Array.from(new Set(orderItems.map((item) => item.variantId)))
 
+    // Verify products exist
     const products = await prisma.product.findMany({
       where: { id: { in: uniqueProductIds } },
-      select: { id: true },
+      select: { id: true, name: true },
     })
 
     if (products.length !== uniqueProductIds.length) {
       const existingIds = new Set(products.map((product) => product.id))
       const missing = uniqueProductIds.filter((id) => !existingIds.has(id))
       return NextResponse.json({ error: `Product(s) not found: ${missing.join(", ")}` }, { status: 404 })
+    }
+
+    // Verify variants exist and belong to the products
+    const variants = await prisma.productVariant.findMany({
+      where: { 
+        id: { in: uniqueVariantIds },
+        productId: { in: uniqueProductIds }
+      },
+      select: { id: true, subcategory: true, productId: true },
+    })
+
+    if (variants.length !== uniqueVariantIds.length) {
+      const existingVariantIds = new Set(variants.map((variant) => variant.id))
+      const missing = uniqueVariantIds.filter((id) => !existingVariantIds.has(id))
+      return NextResponse.json({ error: `Variant(s) not found: ${missing.join(", ")}` }, { status: 404 })
+    }
+
+    // Verify that the strains match the variants
+    for (const item of orderItems) {
+      const variant = variants.find(v => v.id === item.variantId)
+      if (variant && variant.subcategory !== item.strain) {
+        return NextResponse.json({ 
+          error: `Strain mismatch for variant ${item.variantId}: expected "${variant.subcategory}" but got "${item.strain}"` 
+        }, { status: 400 })
+      }
     }
 
     const totalOrderPrice = orderItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
@@ -146,9 +194,11 @@ export async function POST(request: NextRequest) {
         items: {
           create: orderItems.map((item) => ({
             productId: item.productId,
+            variantId: item.variantId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             totalPrice: item.unitPrice * item.quantity,
+            strain: item.strain, 
             notes: item.notes,
           })),
         },
@@ -158,6 +208,7 @@ export async function POST(request: NextRequest) {
         items: {
           include: {
             product: { select: { id: true, name: true, category: true } },
+            
           },
         },
       },
@@ -174,6 +225,8 @@ export async function POST(request: NextRequest) {
           totalPrice: totalOrderPrice,
           itemCount: orderItems.length,
           productIds: orderItems.map((item) => item.productId),
+          variantIds: orderItems.map((item) => item.variantId),
+          strains: orderItems.map((item) => item.strain),
         },
       },
     })
@@ -183,6 +236,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 })
     }
+    console.error("Error creating order:", error)
     return NextResponse.json({ error: "Failed to create order" }, { status: 500 })
   }
 }

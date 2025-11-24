@@ -18,13 +18,14 @@ export async function GET(req: Request) {
 
     const dbUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { role: true, tier: true, company: true },
+      select: { role: true, tier: true, company: true, image: true },
     })
 
     const user = {
       id: session.user.id,
       email: session.user.email,
       name: session.user.name,
+      image: session.user.image,
       role: (dbUser?.role as any) ?? "PUBLIC",
       tier: (dbUser?.tier as any) ?? "GOLD",
       company: dbUser?.company ?? null,

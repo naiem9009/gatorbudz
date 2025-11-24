@@ -23,7 +23,6 @@ const menuItems = [
   { label: "Products", href: "/admin-dashboard/products", icon: Package },
   { label: "Orders", href: "/admin-dashboard/orders", icon: ShoppingCart },
   { label: "Invoices", href: "/admin-dashboard/invoices", icon: Receipt },
-  { label: "Categories", href: "/admin-dashboard/categories", icon: Layers },
   { label: "Tier Proposals", href: "/admin-dashboard/tier-proposals", icon: ClipboardList },
   { label: "Audit Logs", href: "/admin-dashboard/audit-logs", icon: FileText },
   { label: "Analytics", href: "/admin-dashboard/analytics", icon: BarChart3 },

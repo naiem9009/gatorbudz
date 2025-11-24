@@ -7,13 +7,25 @@ import { Skeleton } from "@/components/ui/skeleton"
 interface Product {
   id: string
   name: string
-  description?: string
+  description: string
   videoUrl: string
   category: string
+  weight?: string
+  potency?: string
+  minimumQty: number
+  status: string
+  slug: string
+  variants: ProductVariant[]
+}
+
+interface ProductVariant {
+  id: string
+  subcategory: string
   priceGold?: number
   pricePlatinum?: number
   priceDiamond?: number
 }
+
 
 interface ProductGridProps {
   category?: string
