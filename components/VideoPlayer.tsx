@@ -1,359 +1,3 @@
-// "use client"
-
-// import { useState, useRef, useEffect, useCallback, memo } from "react"
-// import { Play, Loader2 } from "lucide-react"
-// import { Button } from "@/components/ui/button"
-// import Hls from 'hls.js'
-
-// interface VideoPlayerProps {
-//   product: {
-//     id: string
-//     videoUrl: string
-//     name: string
-//   }
-//   autoPlay?: boolean
-//   muted?: boolean
-//   loop?: boolean
-//   priority?: boolean
-// }
-
-// const VideoPlayer = memo(({ 
-//   product, 
-//   autoPlay = true, 
-//   muted = true, 
-//   loop = true,
-//   priority = false
-// }: VideoPlayerProps) => {
-//   const videoRef = useRef<HTMLVideoElement>(null)
-//   const hlsRef = useRef<Hls | null>(null)
-//   const [isLoading, setIsLoading] = useState(false)
-//   const [hasError, setHasError] = useState(false)
-//   const [needsInteraction, setNeedsInteraction] = useState(false)
-//   const [isPlaying, setIsPlaying] = useState(false)
-//   const [hasLoaded, setHasLoaded] = useState(false)
-//   const observerRef = useRef<IntersectionObserver | null>(null)
-//   const autoplayAttemptedRef = useRef(false)
-
-//   // Check if URL is HLS stream
-//   const isHlsStream = useCallback((url: string) => {
-//     return url?.toLowerCase().includes('.m3u8')
-//   }, [])
-
-//   // Simple HLS initialization
-//   const initializeHls = useCallback(() => {
-//     const video = videoRef.current
-//     if (!video || !product.videoUrl) return
-
-//     // Clean up existing HLS instance
-//     if (hlsRef.current) {
-//       hlsRef.current.destroy()
-//       hlsRef.current = null
-//     }
-
-//     if (Hls.isSupported() && isHlsStream(product.videoUrl)) {
-//       console.log('Initializing HLS.js for:', product.videoUrl)
-//       const hls = new Hls({
-//         enableWorker: false,
-//         lowLatencyMode: false,
-//         backBufferLength: 30,
-//         maxBufferLength: 30,
-        
-//         // Network settings
-//         fragLoadingTimeOut: 10000,
-//         fragLoadingMaxRetry: 2,
-//         levelLoadingTimeOut: 10000,
-//         levelLoadingMaxRetry: 2,
-        
-//         autoStartLoad: true,
-//         startPosition: -1,
-//         debug: false,
-//       })
-
-//       hlsRef.current = hls
-
-//       // Single event handler for successful load
-//       const handleManifestParsed = () => {
-//         console.log('HLS manifest parsed successfully')
-//         setIsLoading(false)
-//         setHasError(false)
-//         setHasLoaded(true)
-//       }
-
-//       // Single error handler
-//       const handleError = (event: string, data: any) => {
-//         console.warn('HLS warning:', data.details)
-        
-//         // Ignore non-fatal errors
-//         if (data.details === 'bufferStalledError' || 
-//             data.details === 'fragLoadTimeOut' || 
-//             data.details === 'levelLoadTimeOut') {
-//           return
-//         }
-
-//         if (data.fatal) {
-//           console.error('HLS fatal error:', data)
-//           setHasError(true)
-//           setIsLoading(false)
-//         }
-//       }
-
-//       // Only set up these two listeners
-//       hls.on(Hls.Events.MANIFEST_PARSED, handleManifestParsed)
-//       hls.on(Hls.Events.ERROR, handleError)
-
-//       try {
-//         hls.loadSource(product.videoUrl)
-//         hls.attachMedia(video)
-//       } catch (error) {
-//         console.error('HLS load failed:', error)
-//         setHasError(true)
-//         setIsLoading(false)
-//       }
-
-//     } else {
-//       // Regular video or native HLS (Safari)
-//       console.log('Using native video player for:', product.videoUrl)
-//       video.src = product.videoUrl
-//       setHasLoaded(true)
-//       setIsLoading(false)
-//     }
-//   }, [product.videoUrl, isHlsStream])
-
-//   // Clean up HLS instance
-//   const destroyHls = useCallback(() => {
-//     if (hlsRef.current) {
-//       hlsRef.current.destroy()
-//       hlsRef.current = null
-//     }
-//   }, [])
-
-//   // Single autoplay attempt function
-//   const attemptAutoplay = useCallback(async () => {
-//     const video = videoRef.current
-//     if (!video || !hasLoaded || autoplayAttemptedRef.current) return
-
-//     try {
-//       autoplayAttemptedRef.current = true
-//       await video.play()
-//       setIsPlaying(true)
-//       setNeedsInteraction(false)
-//       console.log('Autoplay successful')
-//     } catch (error) {
-//       console.log('Autoplay prevented, needs interaction')
-//       setNeedsInteraction(true)
-//     }
-//   }, [hasLoaded])
-
-//   // Intersection Observer - simplified
-//   useEffect(() => {
-//     const video = videoRef.current
-//     if (!video) return
-
-//     const handleIntersection = (entries: IntersectionObserverEntry[]) => {
-//       const entry = entries[0]
-      
-//       if (entry.isIntersecting) {
-//         // Video is visible - load and try to play
-//         if (!hasLoaded && !isLoading && !hasError) {
-//           setIsLoading(true)
-//           initializeHls()
-//         } else if (hasLoaded && autoPlay && !isPlaying) {
-//           attemptAutoplay()
-//         }
-//       } else {
-//         // Video is not visible - pause if not looping
-//         if (isPlaying && !loop) {
-//           video.pause()
-//           setIsPlaying(false)
-//         }
-//       }
-//     }
-
-//     observerRef.current = new IntersectionObserver(handleIntersection, {
-//       threshold: 0.3,
-//       rootMargin: "100px"
-//     })
-
-//     observerRef.current.observe(video)
-
-//     return () => {
-//       observerRef.current?.disconnect()
-//     }
-//   }, [autoPlay, hasLoaded, isLoading, hasError, isPlaying, loop, initializeHls, attemptAutoplay])
-
-//   // Video event handlers - simplified
-//   useEffect(() => {
-//     const video = videoRef.current
-//     if (!video) return
-
-//     const handleCanPlay = () => {
-//       console.log('Video can play')
-//       setIsLoading(false)
-//       setHasLoaded(true)
-//       setHasError(false)
-//     }
-
-//     const handleError = () => {
-//       console.error('Video error')
-//       setHasError(true)
-//       setIsLoading(false)
-//     }
-
-//     const handlePlay = () => {
-//       setIsPlaying(true)
-//       setNeedsInteraction(false)
-//     }
-
-//     const handlePause = () => {
-//       setIsPlaying(false)
-//     }
-
-//     // Only essential event listeners
-//     video.addEventListener('canplay', handleCanPlay)
-//     video.addEventListener('error', handleError)
-//     video.addEventListener('play', handlePlay)
-//     video.addEventListener('pause', handlePause)
-
-//     // Initialize immediately if priority
-//     if (priority && product.videoUrl) {
-//       setIsLoading(true)
-//       initializeHls()
-//     }
-
-//     return () => {
-//       video.removeEventListener('canplay', handleCanPlay)
-//       video.removeEventListener('error', handleError)
-//       video.removeEventListener('play', handlePlay)
-//       video.removeEventListener('pause', handlePause)
-      
-//       destroyHls()
-//       if (video.src) {
-//         video.src = ''
-//         video.load()
-//       }
-//     }
-//   }, [priority, product.videoUrl, initializeHls, destroyHls])
-
-//   const handlePlayClick = useCallback(async () => {
-//     const video = videoRef.current
-//     if (!video) return
-
-//     try {
-//       if (video.paused) {
-//         await video.play()
-//       } else {
-//         video.pause()
-//       }
-//     } catch (error) {
-//       console.error('Play failed:', error)
-//       setNeedsInteraction(true)
-//     }
-//   }, [])
-
-//   const handleRetry = useCallback(() => {
-//     setHasError(false)
-//     setIsLoading(true)
-//     setHasLoaded(false)
-//     autoplayAttemptedRef.current = false
-//     destroyHls()
-    
-//     // Reinitialize
-//     setTimeout(() => {
-//       initializeHls()
-//     }, 300)
-//   }, [initializeHls, destroyHls])
-
-//   // Determine if we should show video
-//   const showVideo = hasLoaded && !hasError
-
-//   return (
-//     <div className="relative aspect-video bg-black rounded-t-lg overflow-hidden group">
-//       {/* Loading state - only show when actually loading */}
-//       {isLoading && (
-//         <div className="absolute inset-0 flex items-center justify-center bg-muted z-10">
-//           <div className="flex items-center gap-2 text-white">
-//             <Loader2 className="w-4 h-4 animate-spin" />
-//             <span className="text-sm">Loading...</span>
-//           </div>
-//         </div>
-//       )}
-
-//       {/* Error state */}
-//       {hasError && (
-//         <div className="absolute inset-0 flex items-center justify-center bg-muted z-10">
-//           <div className="text-center text-muted-foreground">
-//             <p className="text-sm mb-2">Failed to load video</p>
-//             <Button
-//               onClick={handleRetry}
-//               variant="outline"
-//               size="sm"
-//             >
-//               Try Again
-//             </Button>
-//           </div>
-//         </div>
-//       )}
-
-//       {/* Play button - Only show if autoplay was prevented and video is paused */}
-//       {needsInteraction && !isPlaying && showVideo && (
-//         <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20 cursor-pointer">
-//           <Button
-//             onClick={handlePlayClick}
-//             className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border-0"
-//             size="lg"
-//           >
-//             <Play className="w-6 h-6 fill-current" />
-//           </Button>
-//         </div>
-//       )}
-
-//       {/* Video element */}
-//       <video
-//         ref={videoRef}
-//         muted={muted}
-//         loop={loop}
-//         playsInline
-//         preload="none" // Let intersection observer handle loading
-//         className={`w-full h-full object-cover transition-opacity duration-200 ${
-//           showVideo ? 'opacity-100' : 'opacity-0'
-//         }`}
-//         aria-label={`Video demonstration of ${product.name}`}
-//         disablePictureInPicture
-//       />
-
-//       {/* Play/pause button - only show on hover */}
-//       {showVideo && (
-//         <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">
-//           <Button
-//             onClick={handlePlayClick}
-//             variant="ghost"
-//             size="sm"
-//             className="bg-black/50 hover:bg-black/70 text-white"
-//           >
-//             {isPlaying ? (
-//               <div className="w-4 h-4 bg-white" />
-//             ) : (
-//               <Play className="w-4 h-4 fill-current" />
-//             )}
-//           </Button>
-//         </div>
-//       )}
-
-//       {/* Loading progress indicator - only show when loading */}
-//       {isLoading && (
-//         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 z-20">
-//           <div className="h-full bg-blue-500 animate-pulse" />
-//         </div>
-//       )}
-//     </div>
-//   )
-// })
-
-// VideoPlayer.displayName = 'VideoPlayer'
-
-// export default VideoPlayer
-
-
 "use client"
 
 import { useState, useRef, useEffect, useCallback, memo } from "react"
@@ -370,16 +14,17 @@ interface VideoPlayerProps {
   autoPlay?: boolean
   muted?: boolean
   loop?: boolean
+  priority?: boolean
 }
 
 const VideoPlayer = memo(({ 
   product, 
   autoPlay = true, 
   muted = true, 
-  loop = true
+  loop = true,
+  priority = false
 }: VideoPlayerProps) => {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [hasError, setHasError] = useState(false)
@@ -388,56 +33,73 @@ const VideoPlayer = memo(({
   const [hasLoaded, setHasLoaded] = useState(false)
   const observerRef = useRef<IntersectionObserver | null>(null)
   const autoplayAttemptedRef = useRef(false)
-  const isInitializedRef = useRef(false)
 
   // Check if URL is HLS stream
   const isHlsStream = useCallback((url: string) => {
     return url?.toLowerCase().includes('.m3u8')
   }, [])
 
-  // Initialize HLS
+  // Simple HLS initialization
   const initializeHls = useCallback(() => {
     const video = videoRef.current
-    if (!video || !product.videoUrl || isInitializedRef.current) return
+    if (!video || !product.videoUrl) return
 
-    console.log('Initializing video:', product.id)
-    isInitializedRef.current = true
-    setIsLoading(true)
-
+    // Clean up existing HLS instance
     if (hlsRef.current) {
       hlsRef.current.destroy()
+      hlsRef.current = null
     }
 
     if (Hls.isSupported() && isHlsStream(product.videoUrl)) {
+      console.log('Initializing HLS.js for:', product.videoUrl)
       const hls = new Hls({
         enableWorker: false,
-        lowLatencyMode: true,
-        backBufferLength: 10,
-        maxBufferLength: 15,
-        fragLoadingTimeOut: 5000,
-        fragLoadingMaxRetry: 1,
-        levelLoadingTimeOut: 5000,
-        levelLoadingMaxRetry: 1,
+        lowLatencyMode: false,
+        backBufferLength: 30,
+        maxBufferLength: 30,
+        
+        // Network settings
+        fragLoadingTimeOut: 10000,
+        fragLoadingMaxRetry: 2,
+        levelLoadingTimeOut: 10000,
+        levelLoadingMaxRetry: 2,
+        
         autoStartLoad: true,
+        startPosition: -1,
         debug: false,
       })
 
       hlsRef.current = hls
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        console.log('HLS loaded:', product.id)
+      // Single event handler for successful load
+      const handleManifestParsed = () => {
+        console.log('HLS manifest parsed successfully')
         setIsLoading(false)
         setHasError(false)
         setHasLoaded(true)
-      })
+      }
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
+      // Single error handler
+      const handleError = (event: string, data: any) => {
+        console.warn('HLS warning:', data.details)
+        
+        // Ignore non-fatal errors
+        if (data.details === 'bufferStalledError' || 
+            data.details === 'fragLoadTimeOut' || 
+            data.details === 'levelLoadTimeOut') {
+          return
+        }
+
         if (data.fatal) {
           console.error('HLS fatal error:', data)
           setHasError(true)
           setIsLoading(false)
         }
-      })
+      }
+
+      // Only set up these two listeners
+      hls.on(Hls.Events.MANIFEST_PARSED, handleManifestParsed)
+      hls.on(Hls.Events.ERROR, handleError)
 
       try {
         hls.loadSource(product.videoUrl)
@@ -449,191 +111,128 @@ const VideoPlayer = memo(({
       }
 
     } else {
-      // Native video playback
+      // Regular video or native HLS (Safari)
+      console.log('Using native video player for:', product.videoUrl)
       video.src = product.videoUrl
-      video.load()
       setHasLoaded(true)
       setIsLoading(false)
     }
-  }, [product.videoUrl, product.id, isHlsStream])
+  }, [product.videoUrl, isHlsStream])
 
-  // Clean up resources
-  const cleanup = useCallback(() => {
-    if (!isInitializedRef.current) return
-
-    console.log('Cleaning up video:', product.id)
-    
-    const video = videoRef.current
-    if (video) {
-      video.pause()
-      video.src = ''
-      video.load()
-    }
-    
+  // Clean up HLS instance
+  const destroyHls = useCallback(() => {
     if (hlsRef.current) {
       hlsRef.current.destroy()
       hlsRef.current = null
     }
-    
-    setIsLoading(false)
-    setHasLoaded(false)
-    setIsPlaying(false)
-    setHasError(false)
-    setNeedsInteraction(false)
-    autoplayAttemptedRef.current = false
-    isInitializedRef.current = false
-  }, [product.id])
+  }, [])
 
-  // Attempt autoplay - FIXED VERSION
+  // Single autoplay attempt function
   const attemptAutoplay = useCallback(async () => {
     const video = videoRef.current
-    if (!video || !hasLoaded || autoplayAttemptedRef.current || !autoPlay) return
+    if (!video || !hasLoaded || autoplayAttemptedRef.current) return
 
     try {
-      // Reset the flag first
       autoplayAttemptedRef.current = true
-      
-      // Ensure video is ready to play
-      if (video.readyState < 3) {
-        await new Promise((resolve) => {
-          const handleCanPlay = () => {
-            video.removeEventListener('canplay', handleCanPlay)
-            resolve(true)
-          }
-          video.addEventListener('canplay', handleCanPlay)
-        })
-      }
-
-      // Attempt to play
       await video.play()
       setIsPlaying(true)
       setNeedsInteraction(false)
-      console.log('Autoplay successful:', product.id)
+      console.log('Autoplay successful')
     } catch (error) {
-      console.log('Autoplay prevented:', product.id, error)
+      console.log('Autoplay prevented, needs interaction')
       setNeedsInteraction(true)
-      autoplayAttemptedRef.current = false // Reset so we can try again
     }
-  }, [hasLoaded, autoPlay, product.id])
+  }, [hasLoaded])
 
-  // Handle video events for autoplay
-  const handleVideoEvents = useCallback(() => {
+  // Intersection Observer - simplified
+  useEffect(() => {
     const video = videoRef.current
     if (!video) return
-
-    const handleLoadedData = () => {
-      console.log('Video loaded data:', product.id)
-      setHasLoaded(true)
-      setIsLoading(false)
-      
-      // Try autoplay when video is loaded and visible
-      if (autoPlay && !autoplayAttemptedRef.current) {
-        setTimeout(() => {
-          attemptAutoplay()
-        }, 100)
-      }
-    }
-
-    const handleCanPlay = () => {
-      console.log('Video can play:', product.id)
-      setIsLoading(false)
-      
-      // Try autoplay when video can play and is visible
-      if (autoPlay && !autoplayAttemptedRef.current && hasLoaded) {
-        setTimeout(() => {
-          attemptAutoplay()
-        }, 100)
-      }
-    }
-
-    const handleError = () => {
-      console.error('Video error:', product.id)
-      setHasError(true)
-      setIsLoading(false)
-    }
-
-    const handlePlay = () => {
-      console.log('Video play:', product.id)
-      setIsPlaying(true)
-      setNeedsInteraction(false)
-    }
-
-    const handlePause = () => {
-      console.log('Video pause:', product.id)
-      setIsPlaying(false)
-    }
-
-    const handleWaiting = () => setIsLoading(true)
-
-    video.addEventListener('loadeddata', handleLoadedData)
-    video.addEventListener('canplay', handleCanPlay)
-    video.addEventListener('error', handleError)
-    video.addEventListener('play', handlePlay)
-    video.addEventListener('pause', handlePause)
-    video.addEventListener('waiting', handleWaiting)
-
-    return () => {
-      video.removeEventListener('loadeddata', handleLoadedData)
-      video.removeEventListener('canplay', handleCanPlay)
-      video.removeEventListener('error', handleError)
-      video.removeEventListener('play', handlePlay)
-      video.removeEventListener('pause', handlePause)
-      video.removeEventListener('waiting', handleWaiting)
-    }
-  }, [autoPlay, attemptAutoplay, hasLoaded, product.id])
-
-  // Intersection Observer - FIXED
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    let currentVideo = videoRef.current
 
     const handleIntersection = (entries: IntersectionObserverEntry[]) => {
       const entry = entries[0]
       
       if (entry.isIntersecting) {
-        // Video became visible
-        console.log('Video visible:', product.id)
-        if (!isInitializedRef.current) {
+        // Video is visible - load and try to play
+        if (!hasLoaded && !isLoading && !hasError) {
+          setIsLoading(true)
           initializeHls()
-        } else if (hasLoaded && autoPlay && !isPlaying && !autoplayAttemptedRef.current) {
-          // Try autoplay if already loaded but not playing
+        } else if (hasLoaded && autoPlay && !isPlaying) {
           attemptAutoplay()
         }
       } else {
-        // Video became hidden
-        console.log('Video hidden:', product.id)
-        if (currentVideo && !loop) {
-          currentVideo.pause()
+        // Video is not visible - pause if not looping
+        if (isPlaying && !loop) {
+          video.pause()
           setIsPlaying(false)
         }
       }
     }
 
     observerRef.current = new IntersectionObserver(handleIntersection, {
-      threshold: 0.5,
+      threshold: 0.3,
+      rootMargin: "100px"
     })
 
-    observerRef.current.observe(container)
+    observerRef.current.observe(video)
 
     return () => {
       observerRef.current?.disconnect()
     }
-  }, [initializeHls, attemptAutoplay, hasLoaded, autoPlay, isPlaying, loop, product.id])
+  }, [autoPlay, hasLoaded, isLoading, hasError, isPlaying, loop, initializeHls, attemptAutoplay])
 
-  // Video event handlers setup
+  // Video event handlers - simplified
   useEffect(() => {
-    return handleVideoEvents()
-  }, [handleVideoEvents])
+    const video = videoRef.current
+    if (!video) return
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      cleanup()
-      observerRef.current?.disconnect()
+    const handleCanPlay = () => {
+      console.log('Video can play')
+      setIsLoading(false)
+      setHasLoaded(true)
+      setHasError(false)
     }
-  }, [cleanup])
+
+    const handleError = () => {
+      console.error('Video error')
+      setHasError(true)
+      setIsLoading(false)
+    }
+
+    const handlePlay = () => {
+      setIsPlaying(true)
+      setNeedsInteraction(false)
+    }
+
+    const handlePause = () => {
+      setIsPlaying(false)
+    }
+
+    // Only essential event listeners
+    video.addEventListener('canplay', handleCanPlay)
+    video.addEventListener('error', handleError)
+    video.addEventListener('play', handlePlay)
+    video.addEventListener('pause', handlePause)
+
+    // Initialize immediately if priority
+    if (priority && product.videoUrl) {
+      setIsLoading(true)
+      initializeHls()
+    }
+
+    return () => {
+      video.removeEventListener('canplay', handleCanPlay)
+      video.removeEventListener('error', handleError)
+      video.removeEventListener('play', handlePlay)
+      video.removeEventListener('pause', handlePause)
+      
+      destroyHls()
+      if (video.src) {
+        video.src = ''
+        video.load()
+      }
+    }
+  }, [priority, product.videoUrl, initializeHls, destroyHls])
 
   const handlePlayClick = useCallback(async () => {
     const video = videoRef.current
@@ -642,28 +241,34 @@ const VideoPlayer = memo(({
     try {
       if (video.paused) {
         await video.play()
-        setNeedsInteraction(false)
       } else {
         video.pause()
       }
     } catch (error) {
-      console.error('Play interaction failed:', error)
+      console.error('Play failed:', error)
       setNeedsInteraction(true)
     }
   }, [])
 
   const handleRetry = useCallback(() => {
-    cleanup()
+    setHasError(false)
+    setIsLoading(true)
+    setHasLoaded(false)
+    autoplayAttemptedRef.current = false
+    destroyHls()
+    
+    // Reinitialize
     setTimeout(() => {
       initializeHls()
-    }, 100)
-  }, [cleanup, initializeHls])
+    }, 300)
+  }, [initializeHls, destroyHls])
 
+  // Determine if we should show video
   const showVideo = hasLoaded && !hasError
 
   return (
-    <div ref={containerRef} className="relative aspect-video bg-black rounded-t-lg overflow-hidden group">
-      {/* Loading state */}
+    <div className="relative aspect-video bg-black rounded-t-lg overflow-hidden group">
+      {/* Loading state - only show when actually loading */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted z-10">
           <div className="flex items-center gap-2 text-white">
@@ -689,13 +294,11 @@ const VideoPlayer = memo(({
         </div>
       )}
 
-      {/* Play button overlay */}
+      {/* Play button - Only show if autoplay was prevented and video is paused */}
       {needsInteraction && !isPlaying && showVideo && (
-        <div 
-          className="absolute inset-0 flex items-center justify-center bg-black/40 z-20 cursor-pointer"
-          onClick={handlePlayClick}
-        >
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20 cursor-pointer">
           <Button
+            onClick={handlePlayClick}
             className="bg-white/20 hover:bg-white/30 text-white backdrop-blur-sm border-0"
             size="lg"
           >
@@ -710,7 +313,7 @@ const VideoPlayer = memo(({
         muted={muted}
         loop={loop}
         playsInline
-        preload="none"
+        preload="none" // Let intersection observer handle loading
         className={`w-full h-full object-cover transition-opacity duration-200 ${
           showVideo ? 'opacity-100' : 'opacity-0'
         }`}
@@ -718,7 +321,7 @@ const VideoPlayer = memo(({
         disablePictureInPicture
       />
 
-      {/* Play/pause button */}
+      {/* Play/pause button - only show on hover */}
       {showVideo && (
         <div className="absolute bottom-2 left-2 opacity-0 group-hover:opacity-100 transition-opacity z-30">
           <Button
@@ -728,14 +331,18 @@ const VideoPlayer = memo(({
             className="bg-black/50 hover:bg-black/70 text-white"
           >
             {isPlaying ? (
-              <div className="flex items-center justify-center w-4 h-4">
-                <div className="w-1 h-3 bg-white mr-0.5" />
-                <div className="w-1 h-3 bg-white" />
-              </div>
+              <div className="w-4 h-4 bg-white" />
             ) : (
               <Play className="w-4 h-4 fill-current" />
             )}
           </Button>
+        </div>
+      )}
+
+      {/* Loading progress indicator - only show when loading */}
+      {isLoading && (
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 z-20">
+          <div className="h-full bg-blue-500 animate-pulse" />
         </div>
       )}
     </div>
@@ -745,3 +352,5 @@ const VideoPlayer = memo(({
 VideoPlayer.displayName = 'VideoPlayer'
 
 export default VideoPlayer
+
+
