@@ -3,6 +3,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth"
 import { z } from "zod"
 import { generateProductSlug } from "@/lib/utils"
+import { uuid } from "better-auth"
+import { v4 as uuidv4 } from 'uuid';
 
 
 const createProductSchema = z.object({
@@ -147,7 +149,14 @@ export async function POST(request: NextRequest) {
     const data = createProductSchema.parse(body)
 
     // Generate product slug
-    const slug = generateProductSlug(data.name)
+    let slug = generateProductSlug(data.name)
+
+    const isExistingSlug = await prisma.product.findUnique({
+      where: { slug }
+    })
+    if (isExistingSlug) {
+      slug += `-${uuidv4().split('-')[1]}`
+    }
 
     // Create product with variants
     const product = await prisma.product.create({
