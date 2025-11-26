@@ -267,7 +267,7 @@ const VideoPlayer = memo(({
   const showVideo = hasLoaded && !hasError
 
   return (
-    <div className="relative aspect-video bg-black rounded-t-lg overflow-hidden group">
+    <div className="relative aspect-video bg-black overflow-hidden group">
       {/* Loading state - only show when actually loading */}
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted z-10">

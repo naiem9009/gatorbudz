@@ -72,28 +72,28 @@ const VideoCardComponent = memo(({ product }: { product: Product }) => {
   const canAddToCart = selectedVariant && getCurrentPrice(selectedVariant) > 0
 
   return (
-    <div className="group bg-card rounded-lg overflow-hidden border border-border hover:border-accent transition-all duration-300 hover:shadow-lg">
+    <div className="group overflow-hidden">
       {/* Video Player with Autoplay */}
       <Link href={`/products/${product.slug}`} prefetch={false}>
-        <h3 className="font-bold text-foreground mb-1 line-clamp-2 hover:text-accent transition text-sm md:text-base text-center truncate">
+        <h3 className="font-bold text-foreground mb-1 line-clamp-2 hover:text-accent transition text-sm md:text-base text-center truncate font-myriad">
           {product.name} 
         </h3>
         <VideoPlayer product={product} />
         {/* Product Info */}
         <div className="p-3 md:p-4 space-y-2">
           {/* Variant Count Badge */}
-          {hasVariants && (
+          {/* {hasVariants && (
             <Badge variant="secondary" className="text-xs">
               {variantCount} strain{variantCount > 1 ? 's' : ''}
             </Badge>
-          )}
+          )} */}
           
           {/* Product Specs */}
-          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+          {/* <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
             {product.weight && <span>{product.weight}</span>}
             {product.potency && <span>• {product.potency}</span>}
             {product.minimumQty > 1 && <span>• Min {product.minimumQty}</span>}
-          </div>
+          </div> */}
         </div>
       </Link>
 

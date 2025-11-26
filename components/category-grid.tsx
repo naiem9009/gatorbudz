@@ -1,10 +1,9 @@
 "use client"
 
-import React, { useState, useEffect, useCallback, useMemo } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import VideoCard from "./video-card"
 import { useAuth } from "@/lib/auth-context"
 import { getCategory } from "@/lib/utils"
-
 
 interface ProductVariant {
   id: string
@@ -58,18 +57,18 @@ const CategorySection = React.memo(({ section, userTier, role }: { section: Cate
     <section className="space-y-6">
       <div className="flex flex-col items-center gap-2">
         <div className="flex-1">
-          <h2 className="text-3xl md:text-4xl font-bold text-accent uppercase tracking-wide">
+          <h2 className="text-3xl md:text-4xl font-semibold text-accent uppercase tracking-wide font-opensans-condensed">
             {section.displayName}
           </h2>
         </div>
-        <div className="text-right text-sm text-muted-foreground">
+        {/* <div className="text-right text-sm text-muted-foreground">
           {section.products.length} products
-        </div>
+        </div> */}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 border border-red-300/40 p-3 md:p-4 rounded-sm">
+      <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4 border border-[#F11D8A] p-3 md:p-4">
         {section.products.map((product) => (
-          <div key={product.id} className="bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
+          <div key={product.id} className="bg-card border border-border overflow-hidden hover:shadow-lg transition-shadow">
             <VideoCard product={product} />
           </div>
         ))}
@@ -81,63 +80,64 @@ const CategorySection = React.memo(({ section, userTier, role }: { section: Cate
 CategorySection.displayName = 'CategorySection'
 
 export default function CategoryGrid({ category, onCategoryChange }: CategoryGridProps) {
-  const [categoryData, setCategoryData] = useState<CategoryData[]>([])
+  const [allCategoryData, setAllCategoryData] = useState<CategoryData[]>([])
+  const [filteredCategoryData, setFilteredCategoryData] = useState<CategoryData[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
 
   const userTier = user?.tier || "GOLD"
 
+  // Fetch all categories initially
   const fetchProducts = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const url = category && category !== "All" 
-        ? `/api/products?category=${encodeURIComponent(category)}` 
-        : "/api/products"
-      
-      const response = await fetch(url)
+      const response = await fetch("/api/products")
       
       if (!response.ok) {
         throw new Error(`Failed to fetch products: ${response.status}`)
       }
       
       const data = await response.json()
-      
       const productsArray = Array.isArray(data) ? data : (data.products || [])
       
-      if (category === "All" || !category) {
-        const groupedByCategory = productsArray.reduce((acc: {[key: string]: Product[]}, product: Product) => {
-          if (!acc[product.category]) {
-            acc[product.category] = []
-          }
-          acc[product.category].push(product)
-          return acc
-        }, {})
-        
-        const sections = Object.entries(groupedByCategory).map(([categoryName, products]) => ({
-          name: categoryName,
-          displayName: getCategory(categoryName).toUpperCase(),
-          products: products as Product[]
-        }))
-        
-        setCategoryData(sections)
-      } else {
-        setCategoryData([{
-          name: category,
-          displayName: getCategory(category).toUpperCase(),
-          products: productsArray
-        }])
-      }
+      // Group by category
+      const groupedByCategory = productsArray.reduce((acc: {[key: string]: Product[]}, product: Product) => {
+        if (!acc[product.category]) {
+          acc[product.category] = []
+        }
+        acc[product.category].push(product)
+        return acc
+      }, {})
+      
+      const sections = Object.entries(groupedByCategory).map(([categoryName, products]) => ({
+        name: categoryName,
+        displayName: getCategory(categoryName).toUpperCase(),
+        products: products as Product[]
+      }))
+      
+      setAllCategoryData(sections)
+      setFilteredCategoryData(sections) // Initially show all
     } catch (error) {
       console.error("Failed to fetch products:", error)
       setError("Failed to load products. Please try again.")
-      setCategoryData([])
+      setAllCategoryData([])
+      setFilteredCategoryData([])
     } finally {
       setLoading(false)
     }
-  }, [category])
-  
+  }, [])
+
+  // Filter categories when category prop changes
+  useEffect(() => {
+    if (category === "All" || !category) {
+      setFilteredCategoryData(allCategoryData)
+    } else {
+      const filtered = allCategoryData.filter(section => section.name === category)
+      setFilteredCategoryData(filtered)
+    }
+  }, [category, allCategoryData])
 
   useEffect(() => {
     fetchProducts()
@@ -163,7 +163,7 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
     )
   }
 
-  if (categoryData.length === 0) {
+  if (allCategoryData.length === 0) {
     return (
       <div className="w-full text-center py-12">
         <div className="bg-card border border-border rounded-lg p-8 max-w-md mx-auto">
@@ -172,10 +172,7 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-2">No Products Found</h3>
           <p className="text-muted-foreground">
-            {category === "All" 
-              ? "No products are currently available."
-              : `No products found in the ${category} category.`
-            }
+            No products are currently available.
           </p>
         </div>
       </div>
@@ -184,14 +181,43 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
 
   return (
     <div className="w-full space-y-16">
-      {categoryData.map((section) => (
-        <CategorySection 
-          key={section.name} 
-          section={section} 
-          userTier={userTier}
-          role={user?.role!}
-        />
-      ))}
+      {/* Category Navigation - Always show all available categories */}
+      <div className="border border-[#F11D8A] max-w-5xl mx-auto p-2">
+        {allCategoryData.map((section) => (
+          <button
+            key={section.name}
+            onClick={() => onCategoryChange && onCategoryChange(section.name)}
+            className={`m-2 transition-all font-opensans-condensed font-semibold ${
+              category === section.name
+                ? "bg-[#F11D8A] text-white px-4 py-2 border-2 border-white"
+                : "bg-[#108632] px-4 py-2 hover:bg-[#0e6b28] text-white"
+            }`}
+          >
+            {getCategory(section.name)}
+          </button>
+        ))}
+      </div>
+
+      {/* Show filtered category sections */}
+      {filteredCategoryData.length === 0 ? (
+        <div className="w-full text-center py-12">
+          <div className="bg-card border border-border rounded-lg p-8 max-w-md mx-auto">
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Products Found</h3>
+            <p className="text-muted-foreground">
+              No products found in the {category} category.
+            </p>
+          </div>
+        </div>
+      ) : (
+        filteredCategoryData.map((section) => (
+          <CategorySection 
+            key={section.name} 
+            section={section} 
+            userTier={userTier}
+            role={user?.role!}
+          />
+        ))
+      )}
     </div>
   )
 }
