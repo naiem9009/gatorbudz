@@ -88,6 +88,17 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
 
   const userTier = user?.tier || "GOLD"
 
+  // Define the exact category order
+  const categoryOrder = [
+    "SUPER_EXOTICS",
+    "PREMIUM_EXOTICS", 
+    "EXOTICS",
+    "LIVING_SOIL",
+    "COMMERCIAL_INDOORS",
+    "FRESH_DEPS",
+    "DEPS"
+  ]
+
   // Fetch all categories initially
   const fetchProducts = useCallback(async () => {
     setLoading(true)
@@ -111,11 +122,31 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
         return acc
       }, {})
       
-      const sections = Object.entries(groupedByCategory).map(([categoryName, products]) => ({
-        name: categoryName,
-        displayName: getCategory(categoryName).toUpperCase(),
-        products: products as Product[]
-      }))
+      // Create sections and sort by predefined order
+      const sections = Object.entries(groupedByCategory)
+        .map(([categoryName, products]) => ({
+          name: categoryName,
+          displayName: getCategory(categoryName).toUpperCase(),
+          products: products as Product[]
+        }))
+        .sort((a, b) => {
+          const indexA = categoryOrder.indexOf(a.name)
+          const indexB = categoryOrder.indexOf(b.name)
+          
+          // If both categories are in the predefined order, sort by that order
+          if (indexA !== -1 && indexB !== -1) {
+            return indexA - indexB
+          }
+          
+          // If only A is in predefined order, it comes first
+          if (indexA !== -1) return -1
+          
+          // If only B is in predefined order, it comes first  
+          if (indexB !== -1) return 1
+          
+          // If neither are in predefined order, sort alphabetically
+          return a.name.localeCompare(b.name)
+        })
       
       setAllCategoryData(sections)
       setFilteredCategoryData(sections) // Initially show all
@@ -181,7 +212,7 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
 
   return (
     <div className="w-full space-y-16">
-      {/* Category Navigation - Always show all available categories */}
+      {/* Category Navigation - Always show all available categories in the defined order */}
       <div className="border border-[#F11D8A] max-w-5xl mx-auto p-2">
         {allCategoryData.map((section) => (
           <button
