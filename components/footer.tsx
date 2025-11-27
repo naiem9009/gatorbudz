@@ -62,8 +62,8 @@ export default function Footer() {
   }, [fetchCategories])
 
   return (
-    <footer className="bg-primary text-primary-foreground border-t border-border mt-16 md:mt-20">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
+    <footer className="bg-primary text-primary-foreground border-t border-border">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-12">
         {/* Main Footer Grid */}
         <AccessRequestWholesale />
         <div className="flex items-center justify-center mb-5">

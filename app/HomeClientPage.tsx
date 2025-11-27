@@ -33,7 +33,7 @@ export default function HomeClientPage() {
 
       <AccessRequestWholesale />
 
-      <section className="py-8 md:py-16 px-4 md:px-8">
+      <section className="px-4 md:px-8">
         <div className="max-w-5xl mx-auto">
           <CategoryGrid category={selectedCategory} onCategoryChange={handleCategoryChange} />
         </div>

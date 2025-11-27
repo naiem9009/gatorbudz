@@ -57,7 +57,7 @@ const CategorySection = React.memo(({ section, userTier, role }: { section: Cate
     <section className="space-y-6">
       <div className="flex flex-col items-center gap-2">
         <div className="flex-1">
-          <h2 className="text-3xl md:text-4xl font-semibold text-accent uppercase tracking-wide font-opensans-condensed">
+          <h2 className="text-4xl md:text-5xl font-semibold text-accent uppercase tracking-wide font-opensans-condensed">
             {section.displayName}
           </h2>
         </div>
@@ -211,7 +211,7 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
   }
 
   return (
-    <div className="w-full space-y-16">
+    <div className="w-full md:space-y-12 space-y-8">
       {/* Category Navigation - Always show all available categories in the defined order */}
       <div className="border border-[#F11D8A] max-w-5xl mx-auto p-2">
         {allCategoryData.map((section) => (
