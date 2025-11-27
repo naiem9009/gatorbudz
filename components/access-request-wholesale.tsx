@@ -8,7 +8,7 @@ const AccessRequestWholesale = () => {
     <div>
       {(isAuthenticated && user?.role === "PUBLIC" || !isAuthenticated) &&(
         <div className='text-center py-5'>
-            <h2 className="md:text-2xl text-md font-semibold font-opensans-condensed mb-4 text-yellow-400 uppercase tracking-wider">
+            <h2 className="md:text-2xl text-md font-semibold font-opensans-condensed mb-4 text-[#DBD110] uppercase tracking-wider">
                 Email: <a href="mailtro:admin@gatorbudz.com" className='text-[#dc2e86] underline'>admin@gatorbudz.com</a> to request Access
             </h2>
             <p className='uppercase text-white text-sm md:text-xl font-myriad font-normal'>Wholesale buyers only - hemp license required</p>
