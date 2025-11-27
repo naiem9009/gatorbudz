@@ -23,8 +23,8 @@ export default function HomeClientPage() {
       )}
 
       <header className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4">
-          <Image src={"/logo.png"} alt="Gatorbudz logo" width={600} height={400} />
+        <div className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4 p-5">
+          <Image src={"/my-logo.png"} alt="Gatorbudz logo" width={600} height={400} />
         </div>
       </header>
 
