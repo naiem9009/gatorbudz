@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react"
 import VideoCard from "./video-card"
 import { useAuth } from "@/lib/auth-context"
 import { getCategory } from "@/lib/utils"
+import AccessRequestWholesale from "./access-request-wholesale"
 
 interface ProductVariant {
   id: string
@@ -27,8 +28,8 @@ interface Product {
 }
 
 interface CategoryGridProps {
-  category: string
-  onCategoryChange?: (category: string) => void
+  category: string | null
+  onCategoryChange?: (category: string | null) => void
 }
 
 interface CategoryData {
@@ -38,14 +39,39 @@ interface CategoryData {
 }
 
 const LoadingSkeleton = () => (
-  <div className="w-full space-y-16">
+  <div className="w-full space-y-8 mt-5">
+    <div className="border border-[#F11D8A] max-w-5xl mx-auto p-4">
+      <div className="flex flex-wrap justify-center gap-3">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse min-w-[120px]"
+          />
+        ))}
+      </div>
+    </div>
+
+
     {Array.from({ length: 3 }).map((_, sectionIndex) => (
       <div key={sectionIndex} className="space-y-6">
-        <div className="h-10 bg-muted rounded w-40 animate-pulse" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="bg-card rounded-lg aspect-video animate-pulse border border-border" />
-          ))}
+        <div className="border border-[#F11D8A] p-6">
+          <div className="flex justify-center mb-6">
+            <div className="h-12 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg animate-pulse w-64" />
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={i}
+                className="bg-card border border-border rounded-lg overflow-hidden animate-pulse"
+              >
+                <div className="aspect-video bg-gradient-to-br from-gray-200 to-gray-300 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-shimmer" />
+                </div>
+              
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     ))}
@@ -55,23 +81,20 @@ const LoadingSkeleton = () => (
 const CategorySection = React.memo(({ section, userTier, role }: { section: CategoryData; userTier: string, role: string }) => {
   return (
     <section className="space-y-6">
-      <div className="flex flex-col items-center gap-2">
+      <div className="border border-[#F11D8A] p-3 md:p-4">
         <div className="flex-1">
-          <h2 className="text-4xl md:text-5xl font-semibold text-accent uppercase tracking-wide font-opensans-condensed">
+          <h2 className="text-4xl md:text-5xl font-semibold text-accent uppercase tracking-wide font-opensans-condensed text-center mb-5">
             {section.displayName}
           </h2>
         </div>
-        {/* <div className="text-right text-sm text-muted-foreground">
-          {section.products.length} products
-        </div> */}
-      </div>
 
-      <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-4 gap-3 md:gap-4 border border-[#F11D8A] p-3 md:p-4">
-        {section.products.map((product) => (
-          <div key={product.id} className="bg-card border border-border overflow-hidden hover:shadow-lg transition-shadow">
-            <VideoCard product={product} />
-          </div>
-        ))}
+        <div className="grid grid-cols-4 gap-2 md:gap-3">
+          {section.products.map((product) => (
+            <div key={product.id} className="bg-card border border-border overflow-hidden hover:shadow-lg transition-shadow">
+              <VideoCard product={product} />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )
@@ -162,7 +185,7 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
 
   // Filter categories when category prop changes
   useEffect(() => {
-    if (category === "All" || !category) {
+    if (category === null) {
       setFilteredCategoryData(allCategoryData)
     } else {
       const filtered = allCategoryData.filter(section => section.name === category)
@@ -173,6 +196,17 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
   useEffect(() => {
     fetchProducts()
   }, [fetchProducts])
+
+  const handleCategoryClick = (categoryName: string) => {
+    if (onCategoryChange) {
+      // Toggle: if clicking the same category, clear filter (set to null)
+      if (category === categoryName) {
+        onCategoryChange(null)
+      } else {
+        onCategoryChange(categoryName)
+      }
+    }
+  }
 
   if (loading) {
     return <LoadingSkeleton />
@@ -211,23 +245,35 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
   }
 
   return (
-    <div className="w-full md:space-y-12 space-y-8">
-      {/* Category Navigation - Always show all available categories in the defined order */}
-      <div className="border border-[#F11D8A] grid grid-cols-3 md:flex md:flex-row items-center justify-center p-2">
-        {allCategoryData.map((section) => (
-          <button
-            key={section.name}
-            onClick={() => onCategoryChange && onCategoryChange(section.name)}
-            className={`m-2 transition-all font-opensans-condensed font-semibold ${
-              category === section.name
-                ? "bg-[#F11D8A] text-white px-4 py-2 border-2 border-white"
-                : "bg-[#108632] px-4 py-2 hover:bg-[#0e6b28] text-white"
-            }`}
-          >
-            {getCategory(section.name)}
-          </button>
-        ))}
+    <div className="w-full space-y-5">
+      {/* Category Filter Buttons */}
+      <div className="border border-[#F11D8A] max-w-5xl mx-auto p-2 mt-6">
+        <div className="flex flex-wrap justify-center gap-2">
+          {allCategoryData.map((section) => (
+            <button
+              key={section.name}
+              onClick={() => handleCategoryClick(section.name)}
+              className={`
+                transition-all font-opensans-condensed font-semibold
+                whitespace-nowrap
+                text-sm sm:text-base
+                px-3 py-2 sm:px-4 sm:py-2
+                m-1 sm:m-2
+                min-w-[100px] sm:min-w-0
+                ${
+                  category === section.name
+                    ? "bg-[#F11D8A] text-white border-2 border-white"
+                    : "bg-[#108632] hover:bg-[#0e6b28] text-white"
+                }
+              `}
+            >
+              {getCategory(section.name)}
+            </button>
+          ))}
+        </div>
       </div>
+
+      <AccessRequestWholesale />
 
       {/* Show filtered category sections */}
       {filteredCategoryData.length === 0 ? (

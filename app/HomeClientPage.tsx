@@ -1,18 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import Header from "@/components/header"
 import CategoryGrid from "@/components/category-grid"
 import Footer from "@/components/footer"
 import { useAuth } from "@/lib/auth-context"
-import AccessRequestWholesale from "@/components/access-request-wholesale"
 import Image from "next/image"
 
 export default function HomeClientPage() {
-  const [selectedCategory, setSelectedCategory] = useState("All")
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const { user } = useAuth()
 
-  const handleCategoryChange = (category: string) => {
+  const handleCategoryChange = (category: string | null) => {
     setSelectedCategory(category)
   }
 
@@ -24,14 +22,11 @@ export default function HomeClientPage() {
         </div>
       )}
 
-      {/* <Header /> */}
       <header className="max-w-5xl mx-auto">
         <div className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4">
           <Image src={"/logo.png"} alt="Gatorbudz logo" width={600} height={400} />
         </div>
       </header>
-
-      <AccessRequestWholesale />
 
       <section className="px-4 md:px-8">
         <div className="max-w-5xl mx-auto">
@@ -39,7 +34,7 @@ export default function HomeClientPage() {
         </div>
       </section>
 
-      <Footer />
+      <Footer selectedCategory={selectedCategory} onCategoryChange={handleCategoryChange} />
     </main>
   )
 }

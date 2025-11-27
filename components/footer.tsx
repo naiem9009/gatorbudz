@@ -7,7 +7,12 @@ import { getCategory } from "@/lib/utils"
 import AccessRequestWholesale from "./access-request-wholesale"
 import Image from "next/image"
 
-export default function Footer() {
+interface FooterProps {
+  selectedCategory?: string | null
+  onCategoryChange?: (category: string | null) => void
+}
+
+export default function Footer({ selectedCategory, onCategoryChange }: FooterProps) {
   const currentYear = new Date().getFullYear()
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,7 +31,6 @@ export default function Footer() {
       
       const data = await response.json()
       
-      // Extract unique categories from products
       let productsData = data
       if (data.products && Array.isArray(data.products)) {
         productsData = data.products
@@ -36,7 +40,7 @@ export default function Footer() {
         const uniqueCategories = [...new Set(
           productsData
             .map((product: any) => product.category)
-            .filter(Boolean) // Remove null/undefined
+            .filter(Boolean) 
         )].sort()
         
         setCategories(uniqueCategories)
@@ -61,24 +65,73 @@ export default function Footer() {
     fetchCategories()
   }, [fetchCategories])
 
+  const handleCategoryClick = useCallback((category: string) => {
+    if (onCategoryChange) {
+      if (selectedCategory === category) {
+        onCategoryChange(null)
+      } else {
+        onCategoryChange(category)
+      }
+    }
+  }, [selectedCategory, onCategoryChange])
+
   return (
-    <footer className="bg-primary text-primary-foreground border-t border-border">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-12">
+    <footer className="text-primary-foreground border-t border-border">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6">
         {/* Main Footer Grid */}
         <AccessRequestWholesale />
         <div className="flex items-center justify-center mb-5">
-          <Image src={'/footer-img-1.png'} alt="straight from the swamp" width={400} height={400} />
+          <Image 
+            src={'/footer-img-1.png'} 
+            alt="straight from the swamp" 
+            width={400} 
+            height={400} 
+            className="w-full max-w-[300px] md:max-w-[400px]"
+          />
         </div>
-        <div className="border border-[#F11D8A] max-w-5xl mx-auto p-2">
-          {categories.map((c) => (
-            <button
-              key={c}
-              className={`m-2 transition-all font-opensans-condensed font-semibold bg-[#108632] px-4 py-2 hover:bg-[#0e6b28] text-white"
-              }`}
-            >
-              {getCategory(c)}
-            </button>
-          ))}
+        
+        {/* Categories Section */}
+        <div className="border border-[#F11D8A] max-w-5xl mx-auto p-2 md:p-3 mt-6">
+          {loading ? (
+            <div className="flex justify-center items-center py-4">
+              <Loader className="animate-spin h-6 w-6 text-[#F11D8A]" />
+              <span className="ml-2 text-sm">Loading categories...</span>
+            </div>
+          ) : error ? (
+            <div className="text-center py-4">
+              <p className="text-red-300 text-sm mb-2">{error}</p>
+              <button
+                onClick={handleRetry}
+                className="bg-[#F11D8A] text-white px-4 py-2 text-sm hover:bg-[#e01a7a] transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap justify-center gap-2">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => handleCategoryClick(category)}
+                  className={`
+                    transition-all font-opensans-condensed font-semibold
+                    whitespace-nowrap
+                    text-sm md:text-base
+                    px-3 py-2 md:px-4 md:py-2
+                    min-w-[100px] md:min-w-0
+                    border-2
+                    ${
+                      selectedCategory === category
+                        ? "bg-[#F11D8A] text-white border-white"
+                        : "bg-[#108632] hover:bg-[#0e6b28] text-white border-transparent"
+                    }
+                  `}
+                >
+                  {getCategory(category)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </footer>
