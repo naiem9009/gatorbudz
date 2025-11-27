@@ -213,7 +213,7 @@ export default function CategoryGrid({ category, onCategoryChange }: CategoryGri
   return (
     <div className="w-full md:space-y-12 space-y-8">
       {/* Category Navigation - Always show all available categories in the defined order */}
-      <div className="border border-[#F11D8A] max-w-5xl mx-auto p-2">
+      <div className="border border-[#F11D8A] flex flex-row items-center justify-center p-2">
         {allCategoryData.map((section) => (
           <button
             key={section.name}
