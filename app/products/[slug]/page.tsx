@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from 'next/navigation'
 import Header from "@/components/header"
-import Footer from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Share2, ArrowLeft, DollarSign, Zap, TrendingUp, Package } from 'lucide-react'
@@ -11,6 +10,7 @@ import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import ProductRequestModal from "@/components/product-request-modal"
 import VideoPlayer from "@/components/VideoPlayer"
+import { useCart } from "@/lib/cart-context"
 
 interface ProductVariant {
   id: string
@@ -44,6 +44,23 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true)
   const [showRequestModal, setShowRequestModal] = useState(false)
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
+  const { addToCart } = useCart()
+  const [showAdded, setShowAdded] = useState(false)
+
+
+  const handleAddToCart = useCallback(() => {
+    try {
+      if (selectedVariant) {
+        addToCart(product, selectedVariant, 1)
+        setShowAdded(true)
+        setTimeout(() => setShowAdded(false), 2000)
+      }
+    } catch (error) {
+      console.error("Error adding to cart:", error)
+    }
+  }, [product, selectedVariant, addToCart])
+
+    
 
   useEffect(() => {
     async function fetchProduct() {
@@ -117,7 +134,6 @@ export default function ProductPage() {
             </div>
           </div>
         </div>
-        <Footer />
       </main>
     )
   }
@@ -132,12 +148,20 @@ export default function ProductPage() {
             Back to Products
           </Link>
         </div>
-        <Footer />
       </main>
     )
   }
 
-  const priceRange = getPriceRange()
+    const getCurrentPrice = (variant: ProductVariant) => {
+    if (!user) return 0
+    switch (user.tier) {
+      case "DIAMOND": return variant.priceDiamond || 0
+      case "PLATINUM": return variant.pricePlatinum || 0
+      case "GOLD": 
+      default: return variant.priceGold || 0
+    }
+  }
+  const canAddToCart = selectedVariant && getCurrentPrice(selectedVariant) > 0
 
   return (
     <main className="min-h-screen bg-background">
@@ -200,39 +224,11 @@ export default function ProductPage() {
                 <Badge variant="outline" className="bg-accent/20 text-accent border-accent/30">
                   {product?.category?.replace(/_/g, " ")}
                 </Badge>
-                {product.variants && product.variants.length > 0 && (
-                  <Badge variant="outline" className="bg-primary/40 text-foreground border-border/50">
-                    {product.variants.length} strain{product.variants.length > 1 ? 's' : ''}
-                  </Badge>
-                )}
               </div>
               <h1 className="text-4xl md:text-5xl font-bold text-foreground">{product.name}</h1>
               <p className="text-muted-foreground leading-relaxed">{product.description}</p>
             </div>
 
-            {/* Variant Selection */}
-            {user?.role !== "PUBLIC" && product.variants && product.variants.length > 1 && (
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-foreground">Select Strain:</p>
-                <div className="flex flex-wrap gap-2">
-                  {product.variants.map((variant) => (
-                    <Button
-                      key={variant.id}
-                      variant={selectedVariant?.id === variant.id ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedVariant(variant)}
-                      className={
-                        selectedVariant?.id === variant.id 
-                          ? "bg-accent text-accent-foreground" 
-                          : "bg-transparent border-border/50"
-                      }
-                    >
-                      {variant.subcategory}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Your Price if logged in */}
             {user && user.role !== "PUBLIC" && selectedVariant && (
@@ -244,60 +240,9 @@ export default function ProductPage() {
                     ${getUserPrice(selectedVariant).toFixed(2)}
                   </span>
                 </div>
-                {product.variants.length > 1 && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    for {selectedVariant.subcategory} strain
-                  </p>
-                )}
               </div>
             )}
 
-            {/* All Tier Prices */}
-            {isAuthenticated && user && user.role !== "PUBLIC" && selectedVariant ? (
-              <div className="space-y-3">
-                <div className={`p-3 rounded-lg border ${getTierBadgeColor("GOLD")}`}>
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold">Gold Tier</span>
-                    <span className="text-xl font-bold">
-                      ${selectedVariant.priceGold?.toFixed(2) || "N/A"}
-                    </span>
-                  </div>
-                </div>
-                {selectedVariant.pricePlatinum && <div className={`p-3 rounded-lg border ${getTierBadgeColor("PLATINUM")}`}>
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold">Platinum Tier</span>
-                    <span className="text-xl font-bold">
-                      ${selectedVariant.pricePlatinum?.toFixed(2) || "N/A"}
-                    </span>
-                  </div> 
-                </div> }
-                {selectedVariant.priceDiamond && <div className={`p-3 rounded-lg border ${getTierBadgeColor("DIAMOND")}`}>
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold">Diamond Tier</span>
-                    <span className="text-xl font-bold">
-                      ${selectedVariant.priceDiamond?.toFixed(2) || "N/A"}
-                    </span>
-                  </div>
-                </div> }
-              </div> 
-            ) : user?.role === "PUBLIC" ? (
-              <div className="text-muted-foreground">Contact the admin to verify your account and enable order process</div>
-            ) : (
-              <div className="text-muted-foreground">Sign in to view tier pricing</div>
-            )}
-
-            {/* Price Range Info */}
-            {priceRange && product.variants.length > 1 && (
-              <div className="bg-primary/20 border border-border/30 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Package className="w-4 h-4" />
-                  <span>Price range across all strains: </span>
-                  <span className="font-semibold text-foreground">
-                    ${priceRange.min.toFixed(2)} - ${priceRange.max.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            )}
 
             {/* CTA Buttons */}
             <div className="space-y-3 pt-2">
@@ -314,12 +259,14 @@ export default function ProductPage() {
                     Request Quote
                   </Button>
                 ) : (
-                  <Button
-                    onClick={() => setShowRequestModal(true)}
-                    className="w-full bg-accent text-accent-foreground hover:bg-accent/90 py-6 text-lg font-semibold shadow-lg shadow-accent/20"
-                  >
-                    Request Quote
-                  </Button>
+                <Button
+                  onClick={handleAddToCart}
+                  className="w-full bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer text-xs md:text-sm"
+                  size="sm"
+                  disabled={!canAddToCart}
+                >
+                  {showAdded ? "Added!" : `Add to Cart - $${canAddToCart ? getCurrentPrice(selectedVariant!).toFixed(2) : '0.00'}`}
+                </Button>
                 )
               ) : (
                 <Button
@@ -345,8 +292,6 @@ export default function ProductPage() {
           onSuccess={() => setShowRequestModal(false)}
         />
       )}
-
-      <Footer />
     </main>
   )
 }

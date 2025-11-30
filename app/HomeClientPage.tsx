@@ -1,17 +1,39 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import Header from "@/components/header"
 import CategoryGrid from "@/components/category-grid"
 import Footer from "@/components/footer"
 import { useAuth } from "@/lib/auth-context"
+import AccessRequestWholesale from "@/components/access-request-wholesale"
 import Image from "next/image"
+import { useSearchParams, useRouter } from "next/navigation"
 
 export default function HomeClientPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const { user } = useAuth()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  // Read category from URL on component mount
+  useEffect(() => {
+    const category = searchParams.get('category')
+    setSelectedCategory(category)
+  }, [searchParams])
 
   const handleCategoryChange = (category: string | null) => {
     setSelectedCategory(category)
+    
+    // Update URL without page reload
+    const params = new URLSearchParams(searchParams.toString())
+    if (category) {
+      params.set('category', category)
+    } else {
+      params.delete('category')
+    }
+    
+    // Update URL without triggering a full page reload
+    router.replace(`?${params.toString()}`, { scroll: false })
   }
 
   return (
@@ -23,8 +45,8 @@ export default function HomeClientPage() {
       )}
 
       <header className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4 p-5">
-          <Image src={"/my-logo.png"} alt="Gatorbudz logo" width={600} height={400} />
+        <div className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4">
+          <Image src={"/logo.png"} alt="Gatorbudz logo" width={600} height={400} />
         </div>
       </header>
 

@@ -5,7 +5,6 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Header from "@/components/header"
-import Footer from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,7 +34,6 @@ export default function AccountSettingsPage() {
             <div className="h-4 bg-muted rounded w-1/3" />
           </div>
         </div>
-        <Footer />
       </main>
     )
   }
@@ -50,7 +48,6 @@ export default function AccountSettingsPage() {
             <Button className="bg-accent text-accent-foreground hover:opacity-90">Go to Login</Button>
           </Link>
         </div>
-        <Footer />
       </main>
     )
   }
@@ -222,7 +219,6 @@ export default function AccountSettingsPage() {
         </div>
       </div>
 
-      <Footer />
     </main>
   )
 }

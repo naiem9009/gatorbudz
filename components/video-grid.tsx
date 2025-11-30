@@ -142,11 +142,11 @@ const PriceDisplay = ({ variants, userTier, role }: { variants: ProductVariant[]
           {userTier}
         </Badge>
       </div>
-      {variants.length > 1 && (
+      {/* {variants.length > 1 && (
         <div className="text-xs text-muted-foreground">
           {variants.length} strain{variants.length > 1 ? 's' : ''} available
         </div>
-      )}
+      )} */}
     </div>
   )
 }

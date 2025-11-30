@@ -1,13 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { useState, useCallback, memo } from "react"
 import { useCart } from "@/lib/cart-context"
 import VideoPlayer from "./VideoPlayer"
 import { useAuth } from "@/lib/auth-context"
-import { Badge } from "./ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ProductVariant {
   id: string
@@ -98,9 +95,8 @@ const VideoCardComponent = memo(({ product }: { product: Product }) => {
       </Link>
 
       {/* Variant Selection and Add to Cart */}
-      {isAuthenticated && user && user.role !== "PUBLIC" && hasVariants && (
+      {/* {isAuthenticated && user && user.role !== "PUBLIC" && hasVariants && (
         <div className="px-3 md:px-4 pb-3 md:pb-4 space-y-2">
-          {/* Variant Selector for multiple variants */}
           {variantCount > 1 ? (
             <Select 
               value={selectedVariant?.id} 
@@ -122,7 +118,6 @@ const VideoCardComponent = memo(({ product }: { product: Product }) => {
               </SelectContent>
             </Select>
           ) : (
-            // Single variant display
             <div className="text-center">
               <Badge variant="outline" className="text-xs">
                 {product.variants[0].subcategory}
@@ -130,7 +125,6 @@ const VideoCardComponent = memo(({ product }: { product: Product }) => {
             </div>
           )}
 
-          {/* Add to Cart Button */}
           <Button
             onClick={handleAddToCart}
             className="w-full bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer text-xs md:text-sm"
@@ -140,7 +134,7 @@ const VideoCardComponent = memo(({ product }: { product: Product }) => {
             {showAdded ? "Added!" : `Add to Cart - $${canAddToCart ? getCurrentPrice(selectedVariant!).toFixed(2) : '0.00'}`}
           </Button>
         </div>
-      )}
+      )} */}
     </div>
   )
 })

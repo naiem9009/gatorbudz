@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Header from "@/components/header"
-import Footer from "@/components/footer"
 import { useAuth } from "@/lib/auth-context"
 import { Button } from "@/components/ui/button"
 import { FileText, LogOut, Settings2 } from "lucide-react"
@@ -38,7 +37,7 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-        <Footer />
+
       </main>
     )
   }
@@ -53,7 +52,7 @@ export default function DashboardPage() {
             <Button className="bg-accent text-accent-foreground hover:opacity-90">Go to Login</Button>
           </Link>
         </div>
-        <Footer />
+
       </main>
     )
   }
@@ -149,8 +148,6 @@ export default function DashboardPage() {
         {activeTab === "invoices" && <DashboardInvoices />}
         {/* {activeTab === "files" && <DashboardFiles />} */}
       </div>
-
-      <Footer />
     </main>
   )
 }

@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from "react"
 import Header from "@/components/header"
-import Footer from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -116,7 +115,7 @@ export default function TierUpgradePage() {
             </div>
           </div>
         </div>
-        <Footer />
+
       </main>
     )
   }
@@ -136,7 +135,7 @@ export default function TierUpgradePage() {
             </Link>
           </div>
         </div>
-        <Footer />
+
       </main>
     )
   }
@@ -335,7 +334,7 @@ export default function TierUpgradePage() {
         </div>
       </div>
 
-      <Footer />
+
     </main>
   )
 }

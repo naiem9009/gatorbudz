@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Header from "@/components/header"
-import Footer from "@/components/footer"
 import ApplyModal from "@/components/apply-modal"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -37,7 +36,6 @@ export default function CartPage() {
             </Link>
           </div>
         </div>
-        <Footer />
       </main>
     )
   }
@@ -271,8 +269,6 @@ export default function CartPage() {
           </div>
         </div>
       </div>
-
-      <Footer />
 
       <ApplyModal isOpen={showApplyModal} onClose={() => setShowApplyModal(false)} />
     </main>

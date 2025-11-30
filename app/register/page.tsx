@@ -52,7 +52,12 @@ export default function RegisterPage() {
       if (response.ok) {
         localStorage.setItem("authToken", data.token)
         localStorage.setItem("user", JSON.stringify(data.user))
-        router.push("/dashboard")
+        if (data.user.role === "PUBLIC") {
+          router.push("/")
+        } else {
+          router.push("/dashboard")
+        }
+        
       } else {
         setError(data.error || "Registration failed")
       }

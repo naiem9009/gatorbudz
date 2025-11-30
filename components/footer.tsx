@@ -12,6 +12,17 @@ interface FooterProps {
   onCategoryChange?: (category: string | null) => void
 }
 
+// Define the exact category order
+const CATEGORY_ORDER = [
+  "SUPER_EXOTICS",
+  "PREMIUM_EXOTICS", 
+  "EXOTICS",
+  "LIVING_SOIL",
+  "COMMERCIAL_INDOORS",
+  "FRESH_DEPS",
+  "DEPS"
+]
+
 export default function Footer({ selectedCategory, onCategoryChange }: FooterProps) {
   const currentYear = new Date().getFullYear()
   const [categories, setCategories] = useState<string[]>([])
@@ -41,17 +52,37 @@ export default function Footer({ selectedCategory, onCategoryChange }: FooterPro
           productsData
             .map((product: any) => product.category)
             .filter(Boolean) 
-        )].sort()
+        )]
         
-        setCategories(uniqueCategories)
+        // Sort categories according to the predefined order
+        const sortedCategories = uniqueCategories.sort((a, b) => {
+          const indexA = CATEGORY_ORDER.indexOf(a)
+          const indexB = CATEGORY_ORDER.indexOf(b)
+          
+          // If both categories are in the predefined order, sort by that order
+          if (indexA !== -1 && indexB !== -1) {
+            return indexA - indexB
+          }
+          
+          // If only A is in predefined order, it comes first
+          if (indexA !== -1) return -1
+          
+          // If only B is in predefined order, it comes first  
+          if (indexB !== -1) return 1
+          
+          // If neither are in predefined order, sort alphabetically
+          return a.localeCompare(b)
+        })
+        
+        setCategories(sortedCategories)
       } else {
         throw new Error("Invalid products data format")
       }
     } catch (error) {
       console.error("Failed to fetch categories:", error)
       setError("Failed to load categories")
-      // Fallback to default categories
-      setCategories(["Flower", "Concentrates", "Edibles", "Tinctures"])
+      // Fallback to default categories in correct order
+      setCategories(CATEGORY_ORDER)
     } finally {
       setLoading(false)
     }
