@@ -5,7 +5,7 @@ import Header from "@/components/header"
 import ApplyModal from "@/components/apply-modal"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Plus, Minus, ShoppingCart, AlertCircle } from 'lucide-react'
+import { Trash2, Plus, Minus, ShoppingCart } from 'lucide-react'
 import Link from "next/link"
 import { useCart } from "@/lib/cart-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -40,8 +40,6 @@ export default function CartPage() {
     )
   }
 
-  const hasLowQuantityItems = items.some(item => item.quantity < 10)
-
   return (
     <main className="min-h-screen bg-background flex flex-col">
       <Header />
@@ -56,17 +54,6 @@ export default function CartPage() {
             {items.length} item{items.length > 1 ? 's' : ''} in cart
           </p>
         </div>
-
-        {/* Minimum Order Warning */}
-        {hasLowQuantityItems && (
-          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex gap-3">
-            <AlertCircle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-yellow-400">Minimum Order: 10 Units</p>
-              <p className="text-xs text-yellow-400/80 mt-1">Some items in your cart are below the minimum order quantity. Adjust quantities to meet the 10-unit minimum.</p>
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Cart Items */}
@@ -165,13 +152,6 @@ export default function CartPage() {
                         <Trash2 size={20} />
                       </button>
                     </div>
-
-                    {/* Low Quantity Warning for this specific item */}
-                    {item.quantity < 10 && (
-                      <div className="mt-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded text-xs text-yellow-600">
-                        ⚠️ Minimum order for this product is 10 units
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -254,16 +234,9 @@ export default function CartPage() {
                 <Button
                   onClick={() => setShowApplyModal(true)}
                   className="w-full bg-accent text-accent-foreground hover:bg-accent/90 py-3 text-base font-semibold shadow-lg shadow-accent/20"
-                  disabled={hasLowQuantityItems}
                 >
-                  {hasLowQuantityItems ? 'Adjust Quantities' : 'Proceed to Checkout'}
+                  Proceed to Checkout
                 </Button>
-
-                {hasLowQuantityItems && (
-                  <p className="text-xs text-yellow-600 text-center p-2 bg-yellow-500/10 rounded border border-yellow-500/20">
-                    ⚠️ Adjust quantities to meet 10-unit minimum
-                  </p>
-                )}
               </CardContent>
             </Card>
           </div>

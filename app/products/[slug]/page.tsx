@@ -1,16 +1,19 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Header from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Share2, ArrowLeft, DollarSign, Zap, TrendingUp, Package } from 'lucide-react'
+import { Share2, ArrowLeft, DollarSign, Zap, TrendingUp, Package, ShoppingCart } from 'lucide-react'
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import ProductRequestModal from "@/components/product-request-modal"
 import VideoPlayer from "@/components/VideoPlayer"
 import { useCart } from "@/lib/cart-context"
+import Image from "next/image"
+import Categories from "@/components/categories"
+import Footer from "@/components/footer"
 
 interface ProductVariant {
   id: string
@@ -36,6 +39,7 @@ interface Product {
 
 export default function ProductPage() {
   const params = useParams()
+  const { cartCount } = useCart()
   const router = useRouter()
   const { user, loading: authLoading, isAuthenticated } = useAuth()
   const productSlug = params.slug as string
@@ -46,6 +50,30 @@ export default function ProductPage() {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null)
   const { addToCart } = useCart()
   const [showAdded, setShowAdded] = useState(false)
+
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const searchParams = useSearchParams()
+
+  // Read category from URL on component mount
+  useEffect(() => {
+    const category = searchParams.get('category')
+    setSelectedCategory(category)
+  }, [searchParams])
+
+  const handleCategoryChange = (category: string | null) => {
+    setSelectedCategory(category)
+    
+    // Update URL without page reload
+    const params = new URLSearchParams(searchParams.toString())
+    if (category) {
+      params.set('category', category)
+    } else {
+      params.delete('category')
+    }
+    
+    // Update URL without triggering a full page reload
+    router.replace(`/?${params.toString()}`, { scroll: false })
+  }
 
 
   const handleAddToCart = useCallback(() => {
@@ -121,11 +149,15 @@ export default function ProductPage() {
   if (loading) {
     return (
       <main className="min-h-screen bg-background">
-        <Header />
+      <header className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4 p-4">
+          <Image src={"/my-logo.png"} alt="Gatorbudz logo" width={600} height={400} />
+        </div>
+      </header>
+
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16">
           <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-muted rounded w-1/4" />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="grid grid-cols-1 gap-4 lg:gap-12 md:w-1/2 w-full mx-auto">
               <div className="aspect-video bg-muted rounded-lg" />
               <div className="space-y-4">
                 <div className="h-12 bg-muted rounded w-3/4" />
@@ -165,17 +197,22 @@ export default function ProductPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <Header />
+      <header className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4 p-4">
+          <Image src={"/my-logo.png"} alt="Gatorbudz logo" width={600} height={400} />
+        </div>
+      </header>
+
+
+      <Categories selectedCategory={selectedCategory} onCategoryChange={handleCategoryChange} />
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
-        {/* Back Button */}
-        <Link href="/products" className="inline-flex items-center gap-2 text-accent hover:opacity-80 transition mb-8">
-          <ArrowLeft size={20} />
-          Back to Products
-        </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 gap-4 lg:gap-12 md:w-1/2 w-full mx-auto">
           {/* Product Video */}
+          <div className="text-center">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground">{product.name}</h1>
+          </div>
           <div className="flex flex-col gap-4">
             <div className="bg-card border border-border/50 rounded-lg overflow-hidden shadow-lg">
               <VideoPlayer 
@@ -185,57 +222,16 @@ export default function ProductPage() {
                 loop={true}
               />
             </div>
-
-            {/* Bulk Order Info */}
-            <div className="bg-accent/10 border border-accent/30 rounded-lg p-4 flex gap-3">
-              <Zap className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-semibold text-accent">Bulk Orders</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Minimum {product.minimumQty || 10} units required per order. Contact sales for bulk pricing details.
-                </p>
-              </div>
-            </div>
-
-            {/* Product Specs */}
-            {(product.weight || product.potency) && (
-              <div className="grid grid-cols-2 gap-3 p-4 bg-primary/30 rounded-lg border border-border/30">
-                {product.weight && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Weight</p>
-                    <p className="text-lg font-semibold text-foreground mt-1">{product.weight}</p>
-                  </div>
-                )}
-                {product.potency && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Potency</p>
-                    <p className="text-lg font-semibold text-accent mt-1">{product.potency}</p>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Product Details */}
           <div className="flex flex-col gap-6">
-            {/* Product Header */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="outline" className="bg-accent/20 text-accent border-accent/30">
-                  {product?.category?.replace(/_/g, " ")}
-                </Badge>
-              </div>
-              <h1 className="text-4xl md:text-5xl font-bold text-foreground">{product.name}</h1>
-              <p className="text-muted-foreground leading-relaxed">{product.description}</p>
-            </div>
-
-
             {/* Your Price if logged in */}
             {user && user.role !== "PUBLIC" && selectedVariant && (
               <div className="pt-4 border-t border-border/30">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Your Price</p>
                 <div className="flex items-center justify-between">
-                  <span className="text-foreground font-semibold">{user.tier} Tier</span>
+                  <span className="text-foreground font-semibold">{user.tier}</span>
                   <span className="text-3xl font-bold text-accent">
                     ${getUserPrice(selectedVariant).toFixed(2)}
                   </span>
@@ -259,14 +255,28 @@ export default function ProductPage() {
                     Request Quote
                   </Button>
                 ) : (
-                <Button
-                  onClick={handleAddToCart}
-                  className="w-full bg-accent text-accent-foreground hover:bg-accent/90 cursor-pointer text-xs md:text-sm"
-                  size="sm"
-                  disabled={!canAddToCart}
-                >
-                  {showAdded ? "Added!" : `Add to Cart - $${canAddToCart ? getCurrentPrice(selectedVariant!).toFixed(2) : '0.00'}`}
-                </Button>
+                <div className="flex flex-row gap-6 justify-center">
+                  {isAuthenticated && <Link href="/cart" className="relative p-2 text-foreground hover:text-accent transition">
+                    <ShoppingCart size={20} />
+                    {cartCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-accent text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        {cartCount}
+                      </span>
+                  )}
+                </Link> }
+                  <button
+                    onClick={handleAddToCart}
+                    className="transition-all font-opensans-condensed font-semibold
+                    whitespace-nowrap
+                    text-sm md:text-base
+                    px-3 py-2 md:px-4 md:py-2
+                    min-w-[100px] md:min-w-0
+                    border-2 bg-[#108632] hover:bg-[#0e6b28] text-white border-transparent" 
+                    disabled={!canAddToCart}
+                  >
+                    {showAdded ? "Added!" : `Add to Cart - $${canAddToCart ? getCurrentPrice(selectedVariant!).toFixed(2) : '0.00'}`}
+                  </button>
+                </div>
                 )
               ) : (
                 <Button
@@ -292,6 +302,8 @@ export default function ProductPage() {
           onSuccess={() => setShowRequestModal(false)}
         />
       )}
+
+      <Footer selectedCategory={selectedCategory} onCategoryChange={handleCategoryChange} />
     </main>
   )
 }

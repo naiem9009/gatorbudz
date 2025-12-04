@@ -7,6 +7,9 @@ type Role = "PUBLIC" | "VERIFIED" | "MANAGER" | "ADMIN"
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/about", "/contact"];
 const AUTH_ROUTES = ["/login", "/register"];
 
+// Skip auth for these API routes (webhooks)
+const UNAUTH_API_ROUTES = ["/api/webhooks"];
+
 const RULES: Array<{ prefix: string; allowed: Role[]; redirect: string; withNext?: boolean }> = [
   { prefix: "/dashboard", allowed: ["VERIFIED", "MANAGER", "ADMIN"], redirect: "/login", withNext: true },
   { prefix: "/manager",   allowed: ["MANAGER", "ADMIN"],             redirect: "/" },
@@ -28,10 +31,12 @@ function redirectWithNext(req: NextRequest, to: string) {
 export async function middleware(request: NextRequest) {
   const pathname = normalize(request.nextUrl.pathname)
 
-  // Skip middleware for API routes and static files
-  if (pathname.startsWith('/api/') || 
-      pathname.startsWith('/_next/') || 
-      pathname.includes('.')) {
+  // Skip middleware for API routes that do not require auth, static files, and Next.js internals
+  if (
+    pathname.startsWith('/api/') && UNAUTH_API_ROUTES.some(route => pathname.startsWith(route)) ||
+    pathname.startsWith('/_next/') ||
+    pathname.includes('.')
+  ) {
     return NextResponse.next()
   }
 
@@ -42,7 +47,6 @@ export async function middleware(request: NextRequest) {
         cookie: request.headers.get("cookie") || ""
       }
     })
-    // Only extract the role into our expected shape to satisfy typings
     user = session?.user ? { role: (session.user as any).role } : null
   } catch (error) {
     console.log('Auth error:', error)
@@ -75,8 +79,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next()
 }
 
-// Export runtime configuration
-export const runtime = 'nodejs' // Force Node.js runtime
+export const runtime = 'nodejs'
 
 export const config = {
   matcher: [

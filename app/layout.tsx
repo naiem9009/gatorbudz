@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
 import { CartProvider } from "@/lib/cart-context"
@@ -10,8 +9,8 @@ const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Gator Budz",
-  description: "Home - Gator Budz",
+  title: "Gator Budz – Premium Wholesale THCA Flower Marketplace",
+  description: "Welcome to Gator Budz, your exclusive wholesale destination for premium THCA hemp flower. We connect top growers from across the country with licensed buyers looking for the finest selection",
 }
 
 export default function RootLayout({
@@ -25,7 +24,6 @@ export default function RootLayout({
         <AuthProvider>
           <CartProvider>
             {children}
-            <Analytics />
           </CartProvider>
         </AuthProvider>
       </body>

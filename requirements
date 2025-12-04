@@ -1,0 +1,119 @@
+✅ Phase 1: Core Launch Features (Must Be Complete)
+1. Daily Video Media Feed (Auto-Updated)
+
+ Spreadsheet-Driven Backend for all videos
+
+Upload strain/media data into Google Sheets or Airtable
+
+Designer auto-pulls new rows (via API or webhook) → displays them on site
+
+ Video hosting via Bunny.net CDN (or similar) for high-quality playback
+
+ Customers can click on videos (not just strain name) to go to product pages
+
+Confirm videos are fully clickable on desktop + mobile
+
+2. Add-to-Cart & Invoice Workflow
+
+ Only logged-in, approved buyers can add items to cart
+
+If not logged in: show login/signup prompt
+
+ No live pricing on public pages — only visible after login
+
+ Once cart is submitted: creates an order request, not a paid checkout
+
+Automatically generates invoice on backend (Zoho or custom)
+
+Admin approves and sends invoice → customer pays via ACH
+
+3. ACH Payment Integration
+
+ Integrate a secure ACH processor:
+
+Options: GoCardless, Dwolla + Plaid, or Helcim
+
+Ensure low/no percent fee structure for $10K–$50K transactions
+
+Settlement must occur within 1 business day
+
+ Payment confirmation → triggers backend to fulfill order
+
+4. Customer Login & Tiered Pricing
+
+ Custom-built user portal (if not using ZPortals)
+
+ Buyers must:
+
+Register an account → get approved manually by admin
+
+Upon approval, see custom pricing tiers
+
+ Ability to manage account info, past orders, invoices
+
+5. Admin & Developer Tools
+
+ Simple admin dashboard to:
+
+Approve/deny new buyers
+
+Review incoming orders
+
+Send invoices
+
+ Daily update automation:
+
+Syncs new product/video info from Google Sheet to website
+
+Syncs customer data (optional: from Zoho)
+
+🧪 Phase 2: Expansions (Post-Launch)
+6. Morning Show + Live Streaming
+
+ Integrate multistreaming platform (e.g. Restream, OBS + custom RTMP)
+
+Stream to: YouTube, Vimeo, Twitch, Rumble
+
+Embed livestream on homepage
+
+ Use overlay templates to:
+
+Show your camera feed + product grid walkthrough
+
+Display real-time comments or pinned promos
+
+ Option for scheduled daily show (like 9AM ET) and replays
+
+7. Crypto Payments (Optional Alternative Flow)
+
+ Stablecoin acceptance (e.g. USDC or BTC-backed stablecoin)
+
+Through providers like Cybrid, BVNK, or NOWPayments
+
+ Instant crypto → fiat off-ramp via business wallet
+
+ Setup customer checkout option: Pay in Stablecoin via WalletConnect
+
+No chargebacks, instant payment clearance
+
+8. Future CRM Sync & Automation
+
+ Sync to Zoho CRM or Books once stable
+
+Auto-create invoices in Zoho
+
+Track order history, contacts, payment confirmations
+
+ Optional: Use Zoho Flow or Zapier to automate status updates, tier changes
+
+🗂️ Supporting Assets To Prepare
+
+ Finalized Google Sheet template for product/video rows
+
+ ACH processor account finalized + integrated (Dwolla, GoCardless, etc.)
+
+ Your terms of use & wholesale approval policy
+
+ Admin panel access for approving accounts / reviewing order requests
+
+ Embed-ready livestream layout or template

@@ -95,6 +95,7 @@ model Verification {
 // Product model with tier-based pricing and strain-based pricing
 model Product {
   id          String        @id @default(cuid())
+  productId   String  @unique @default(cuid())
   name        String
   slug        String        @unique
   description String?
@@ -518,4 +519,12 @@ model BusinessAccount {
   invoices Invoice[]
 
   @@map("business_account")
+}
+
+
+model Notification {
+  id          String   @id @default(cuid())
+  notify_user String
+  notify_receiver String
+  notification_data String
 }

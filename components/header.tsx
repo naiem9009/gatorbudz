@@ -26,7 +26,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsMenuOpen(false)}>
-          <Image src="/logo.png" alt="Gator Budz Logo" width={150} height={150} />
+          <Image src="/my-logo.png" alt="Gator Budz Logo" width={150} height={150} />
         </Link>
 
         {/* Desktop Navigation */}
