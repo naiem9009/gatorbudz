@@ -1437,60 +1437,703 @@ export async function sendInvoiceReminder(props: InvoiceReminderProps) {
 
 
 export async function sendOrderStatusEmail({
-    to,
-    customerName,
-    orderId,
-    oldStatus,
-    newStatus,
-    items,
-    totalAmount
+  to,
+  customerName,
+  orderId,
+  newStatus,
+  items,
+  totalAmount
 }: {
-    to: string;
-    customerName: string;
-    orderId: string;
-    oldStatus: string;
-    newStatus: string;
-    items: Array<{
-        name: string;
-        quantity: number;
-        unitPrice: number;
-        totalPrice: number;
-    }>;
-    totalAmount: number;
+  to: string;
+  customerName: string;
+  orderId: string;
+  newStatus: string;
+  items: Array<{
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }>;
+  totalAmount: number;
 }) {
-    // Use your email service (Resend, Nodemailer, etc.)
+  try {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
+    // Format currency
+    const formatCurrency = (amount: number) => {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+      }).format(amount)
+    }
+
+    // Calculate subtotal
+    const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0)
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="x-apple-disable-message-reformatting">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Order #${orderId} Status Update - GatorBudz</title>
+        <style>
+          /* RESET */
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+          }
+          
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+            line-height: 1.5; 
+            color: #333333; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f5f5f5;
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            width: 100% !important;
+          }
+          
+          table {
+            border-collapse: collapse;
+            width: 100%;
+          }
+          
+          img {
+            max-width: 100%;
+            height: auto;
+            border: 0;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+          }
+          
+          a {
+            text-decoration: none;
+          }
+          
+          /* CONTAINER */
+          .email-wrapper {
+            width: 100%;
+            margin: 0 auto;
+            padding: 0;
+            background-color: #f5f5f5;
+          }
+          
+          .container {
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+            background: #ffffff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+          }
+          
+          /* HEADER */
+          .header { 
+            background: #1f2937;
+            color: #ffffff; 
+            padding: 25px 20px; 
+            text-align: center; 
+          }
+          
+          .logo-container {
+            margin-bottom: 15px;
+            text-align: center;
+          }
+          
+          .logo {
+            max-width: 180px;
+            height: auto;
+            display: inline-block;
+          }
+          
+          /* CONTENT */
+          .content { 
+            padding: 30px; 
+          }
+          
+          /* FOOTER */
+          .footer { 
+            background: #1f2937; 
+            color: #ffffff; 
+            padding: 25px 20px; 
+            text-align: center; 
+            font-size: 14px;
+          }
+          
+          /* ORDER HEADER */
+          .order-header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+          }
+          
+          .company-info {
+            flex: 1;
+            min-width: 250px;
+            margin-bottom: 20px;
+          }
+          
+          .order-info {
+            flex: 1;
+            min-width: 200px;
+            text-align: right;
+          }
+          
+          .order-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+            margin: 0 0 15px 0;
+          }
+          
+          .company-address {
+            color: #666666;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+          }
+          
+          .contact-info {
+            color: #666666;
+            font-size: 14px;
+            line-height: 1.6;
+          }
+          
+          /* STATUS BADGE */
+          .status-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #1f2937;
+          }
+          
+          .status-title {
+            margin: 0 0 15px 0;
+            color: #1f2937;
+            font-size: 18px;
+            font-weight: 600;
+          }
+          
+          .status-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #1f2937;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+          
+          /* ITEMS TABLE */
+          .items-section {
+            margin: 30px 0;
+          }
+          
+          .section-title {
+            color: #1f2937;
+            margin: 0 0 15px 0;
+            font-size: 18px;
+            font-weight: 600;
+          }
+          
+          .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+          }
+          
+          .items-table th {
+            text-align: left;
+            padding: 14px 12px;
+            background: #1f2937;
+            color: #ffffff;
+            font-weight: 600;
+            border: none;
+          }
+          
+          .items-table td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
+          }
+          
+          .items-table tr:nth-child(even) {
+            background-color: #f8fafc;
+          }
+          
+          .items-table tr:last-child td {
+            border-bottom: 2px solid #1f2937;
+          }
+          
+          /* TOTALS SECTION */
+          .totals-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+          }
+          
+          .total-row {
+            display: flex;
+            justify-content: flex-end;
+            margin: 10px 0;
+            padding: 0 10px;
+          }
+          
+          .total-label {
+            width: 120px;
+            text-align: right;
+            padding-right: 20px;
+            font-weight: 600;
+            color: #4b5563;
+          }
+          
+          .total-value {
+            width: 120px;
+            text-align: right;
+            font-weight: 500;
+            color: #1f2937;
+          }
+          
+          .grand-total {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+            border-top: 2px solid #1f2937;
+            padding-top: 15px;
+            margin-top: 15px;
+          }
+          
+          .grand-total .total-label {
+            color: #1f2937;
+          }
+          
+          /* CUSTOMER INFO */
+          .customer-info {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+            border-left: 4px solid #1f2937;
+          }
+          
+          .customer-title {
+            margin: 0 0 15px 0;
+            color: #1f2937;
+            font-size: 18px;
+            font-weight: 600;
+          }
+          
+          /* MESSAGE SECTION */
+          .message-section {
+            text-align: center;
+            padding: 25px 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin: 30px 0;
+          }
+          
+          .message {
+            font-style: italic;
+            color: #4b5563;
+            line-height: 1.6;
+            margin: 8px 0;
+          }
+          
+          /* FOOTER STYLES */
+          .footer-logo {
+            max-width: 120px;
+            height: auto;
+            margin-bottom: 15px;
+            opacity: 0.9;
+          }
+          
+          .footer-company {
+            margin: 0 0 15px 0;
+            font-weight: 600;
+            font-size: 16px;
+          }
+          
+          .footer-contact {
+            margin-top: 10px;
+            font-size: 13px;
+            line-height: 1.5;
+            opacity: 0.8;
+          }
+          
+          .footer-line {
+            margin: 5px 0;
+          }
+          
+          /* MOBILE RESPONSIVE */
+          @media screen and (max-width: 640px) {
+            .container {
+              max-width: 100% !important;
+              width: 100% !important;
+              box-shadow: none;
+            }
+            
+            .content {
+              padding: 20px 15px !important;
+            }
+            
+            .header {
+              padding: 20px 15px !important;
+            }
+            
+            .footer {
+              padding: 20px 15px !important;
+            }
+            
+            .order-header {
+              flex-direction: column;
+              text-align: left !important;
+            }
+            
+            .order-info {
+              text-align: left !important;
+              margin-top: 0 !important;
+            }
+            
+            .order-title {
+              font-size: 24px;
+            }
+            
+            .company-info, 
+            .order-info {
+              min-width: 100%;
+            }
+            
+            .items-table {
+              font-size: 13px;
+            }
+            
+            .items-table th,
+            .items-table td {
+              padding: 10px 8px !important;
+            }
+            
+            .items-table th:nth-child(1),
+            .items-table td:nth-child(1) {
+              width: 40px;
+              min-width: 40px;
+            }
+            
+            .items-table th:nth-child(2),
+            .items-table td:nth-child(2) {
+              min-width: 120px;
+            }
+            
+            .items-table th:nth-child(3),
+            .items-table td:nth-child(3),
+            .items-table th:nth-child(4),
+            .items-table td:nth-child(4),
+            .items-table th:nth-child(5),
+            .items-table td:nth-child(5) {
+              min-width: 80px;
+            }
+            
+            .total-row {
+              flex-direction: column;
+              align-items: flex-end;
+              text-align: right;
+              padding: 0;
+            }
+            
+            .total-label,
+            .total-value {
+              width: auto;
+              display: block;
+              text-align: right;
+              padding: 2px 0;
+            }
+            
+            .total-label {
+              padding-right: 0;
+              margin-bottom: 2px;
+              font-size: 14px;
+            }
+            
+            .grand-total .total-label,
+            .grand-total .total-value {
+              font-size: 16px;
+            }
+            
+            .status-section,
+            .customer-info,
+            .message-section {
+              padding: 15px !important;
+            }
+            
+            .section-title {
+              font-size: 16px;
+            }
+            
+            .status-badge {
+              font-size: 16px;
+              padding: 8px 16px;
+            }
+          }
+          
+          @media screen and (max-width: 480px) {
+            .items-table {
+              display: block;
+              overflow-x: auto;
+              -webkit-overflow-scrolling: touch;
+            }
+            
+            .items-table th,
+            .items-table td {
+              white-space: nowrap;
+              min-width: 100px;
+            }
+            
+            .company-address,
+            .contact-info {
+              font-size: 13px;
+            }
+            
+            .message {
+              font-size: 14px;
+            }
+            
+            .footer {
+              font-size: 13px;
+            }
+          }
+          
+          /* OUTLOOK FIXES */
+          .ExternalClass {
+            width: 100%;
+          }
+          
+          .ExternalClass,
+          .ExternalClass p,
+          .ExternalClass span,
+          .ExternalClass font,
+          .ExternalClass td,
+          .ExternalClass div {
+            line-height: 100%;
+          }
+          
+          /* GMAIL FIXES */
+          u + .body .gmail {
+            display: none;
+          }
+          
+          /* DARK MODE SUPPORT */
+          @media (prefers-color-scheme: dark) {
+            body {
+              background-color: #1a1a1a !important;
+              color: #ffffff !important;
+            }
+            
+            .container {
+              background-color: #2d2d2d !important;
+              color: #ffffff !important;
+            }
+            
+            .header,
+            .footer {
+              background-color: #000000 !important;
+            }
+            
+            .status-section,
+            .customer-info,
+            .message-section,
+            .items-table tr:nth-child(even) {
+              background-color: #3d3d3d !important;
+            }
+            
+            .order-title,
+            .section-title,
+            .customer-title,
+            .total-value,
+            .grand-total {
+              color: #ffffff !important;
+            }
+            
+            .company-address,
+            .contact-info,
+            .message {
+              color: #cccccc !important;
+            }
+            
+            .items-table th {
+              background-color: #000000 !important;
+            }
+            
+            .items-table td {
+              border-bottom-color: #4d4d4d !important;
+              color: #ffffff !important;
+            }
+            
+            .status-badge {
+              background-color: #ffffff !important;
+              color: #000000 !important;
+            }
+          }
+        </style>
+      </head>
+      <body class="body" style="margin: 0; padding: 0; background-color: #f5f5f5; width: 100%;">
+        <div class="email-wrapper" style="width: 100%; padding: 20px 0;">
+          <div class="container">
+            <!-- HEADER -->
+            <div class="header">
+              <div class="logo-container">
+                <img src="https://test.gatorbudz.com/my-logo.png" alt="GatorBudz" class="logo" style="max-width: 180px; height: auto;">
+              </div>
+            </div>
+            
+            <!-- CONTENT -->
+            <div class="content">
+              <!-- ORDER HEADER -->
+              <div class="order-header">
+                <div class="company-info">
+                  <h1 class="order-title">ORDER STATUS UPDATE</h1>
+                  <div class="company-address">
+                    GATOR BUDZ<br>
+                    2981 SE Dominica Terr Unit 5<br>
+                    Stuart Florida 34997<br>
+                    U.S.A.
+                  </div>
+                  <div class="contact-info">
+                    7727081338<br>
+                    admin@gatorbudz.com
+                  </div>
+                </div>
+                
+                <div class="order-info">
+                  <div style="margin-bottom: 15px;">
+                    <strong>Order #:</strong><br>
+                    ${orderId}
+                  </div>
+                  <div>
+                    <strong>Date:</strong><br>
+                    ${new Date().toLocaleDateString('en-US', { 
+                      day: '2-digit', 
+                      month: 'short', 
+                      year: 'numeric' 
+                    })}
+                  </div>
+                </div>
+              </div>
+              
+              <!-- STATUS UPDATE -->
+              <div class="status-section">
+                <h3 class="status-title">Order Status Update</h3>
+                <div class="status-badge">${newStatus}</div>
+                <p style="margin: 15px 0 0 0; color: #666666;">
+                  The status of your order has been updated to <strong>${newStatus}</strong>.
+                </p>
+              </div>
+              
+              <!-- CUSTOMER INFO -->
+              <div class="customer-info">
+                <h3 class="customer-title">Customer Information</h3>
+                <p style="margin: 0; font-weight: 600;">${customerName}</p>
+              </div>
+              
+              <!-- ORDER ITEMS -->
+              <div class="items-section">
+                <h3 class="section-title">Order Items</h3>
+                <table class="items-table" cellpadding="0" cellspacing="0">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Item</th>
+                      <th>Qty</th>
+                      <th>Unit Price</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${items.map((item, index) => `
+                      <tr>
+                        <td>${index + 1}</td>
+                        <td>${item.name}</td>
+                        <td>${item.quantity.toFixed(2)}</td>
+                        <td>${formatCurrency(item.unitPrice)}</td>
+                        <td>${formatCurrency(item.totalPrice)}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- TOTALS -->
+              <div class="totals-section">
+                <div class="total-row">
+                  <span class="total-label">Subtotal:</span>
+                  <span class="total-value">${formatCurrency(subtotal)}</span>
+                </div>
+                <div class="total-row grand-total">
+                  <span class="total-label">Total Amount:</span>
+                  <span class="total-value">${formatCurrency(totalAmount)}</span>
+                </div>
+              </div>
+              
+              <!-- MESSAGE SECTION -->
+              <div class="message-section">
+                <p class="message" style="margin: 0 0 12px 0;">
+                  Thank you for your business with GatorBudz.
+                </p>
+                <p class="message" style="margin: 0;">
+                  We appreciate your trust and confidence in our products and services.
+                </p>
+              </div>
+            </div>
+            
+            <!-- FOOTER -->
+            <div class="footer">
+              <div style="margin-bottom: 15px;">
+                <img src="https://test.gatorbudz.com/my-logo.png" alt="GatorBudz" class="footer-logo" style="max-width: 120px; height: auto;">
+              </div>
+              <p class="footer-company" style="margin: 0 0 15px 0;">GATOR BUDZ</p>
+              <div class="footer-contact">
+                <p class="footer-line" style="margin: 5px 0;">2981 SE Dominica Terr Unit 5, Stuart Florida 34997, U.S.A.</p>
+                <p class="footer-line" style="margin: 5px 0;">7727081338 | admin@gatorbudz.com</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `
+
     const { data, error } = await resend.emails.send({
-        from: 'onboarding@resend.dev',
-        to: [to],
-        subject: `Order #${orderId} Status Updated to ${newStatus}`,
-        html: `
-            <h1>Order Status Updated</h1>
-            <p>Dear ${customerName},</p>
-            <p>The status of your order <strong>#${orderId}</strong> has been updated.</p>
-            <p><strong>Previous Status:</strong> ${oldStatus}</p>
-            <p><strong>New Status:</strong> ${newStatus}</p>
-            
-            <h2>Order Summary</h2>
-            <ul>
-                ${items.map(item => `
-                    <li>
-                        ${item.name} - ${item.quantity} x $${item.unitPrice.toFixed(2)} = $${item.totalPrice.toFixed(2)}
-                    </li>
-                `).join('')}
-            </ul>
-            <p><strong>Total Amount: $${totalAmount.toFixed(2)}</strong></p>
-            
-            <p>Thank you for your business!</p>
-        `,
+      from: 'GatorBudz <no-reply@gatorbudz.com>',
+      to,
+      subject: `Order #${orderId} Status Update - GatorBudz`,
+      html,
     });
 
     if (error) {
-        throw error;
+      throw error;
     }
 
-    return data;
+    console.log(`Order status email sent to ${to}`, { emailId: data?.id })
+    return { success: true, emailId: data?.id }
+  } catch (error) {
+    console.error('Failed to send order status email:', error)
+    throw error
+  }
 }
 
 // Email notification function

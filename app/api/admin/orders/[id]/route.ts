@@ -98,7 +98,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
               to: order.user.email,
               customerName: order.user.name || order.user.email,
               orderId: order.orderId || order.id.slice(0, 8),
-              oldStatus: order.status,
               newStatus: status,
               items: order.items.map((item: any) => ({
                 name: item.product?.name || "Product",
@@ -177,7 +176,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
               to: order.user.email,
               customerName: order.user.name || order.user.email,
               orderId: order.orderId || order.id.slice(0, 8),
-              oldStatus: order.status,
               newStatus: status,
               items: order.items.map((item: any) => ({
                 name: item.product?.name || "Product",
