@@ -8,12 +8,12 @@ const prisma = new PrismaClient()
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: { enabled: true },
-  socialProviders: {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-    }
-  },
+  // socialProviders: {
+  //   google: {
+  //     clientId: process.env.GOOGLE_CLIENT_ID || "",
+  //     clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+  //   }
+  // },
   plugins: [
     customSession(async ({ user, session }) => {
       const dbUser = await prisma.user.findUnique({

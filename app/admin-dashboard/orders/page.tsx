@@ -1,25 +1,19 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Eye, ShoppingCart, DollarSign, Clock, Package } from 'lucide-react'
+import { Eye, ShoppingCart, DollarSign, Clock, Package, ArrowLeft } from 'lucide-react'
 import DataTable from "@/components/admin/data-table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function OrdersPage() {
+  const router = useRouter()
   const [orders, setOrders] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedOrder, setSelectedOrder] = useState<any>(null)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
   useEffect(() => {
@@ -52,12 +46,15 @@ export default function OrdersPage() {
       if (!response.ok) throw new Error("Failed to update order")
 
       await fetchOrders()
-      setSelectedOrder(null)
     } catch (error) {
       console.error("Error updating order:", error)
     } finally {
       setUpdatingStatus(null)
     }
+  }
+
+  const handleViewOrder = (orderId: string) => {
+    router.push(`/admin-dashboard/orders/${orderId}`)
   }
 
   const filteredOrders = orders.filter((o) => {
@@ -101,7 +98,7 @@ export default function OrdersPage() {
       render: (value: any, row: any) => (
         <div>
           <p className="font-semibold text-foreground">{value?.email || "Unknown"}</p>
-          <p className="text-xs text-muted-foreground">{value?.company || "No company"}</p>
+          <p className="text-xs text-muted-foreground">{value?.name || "Unknown"}</p>
           <p className="text-xs text-muted-foreground capitalize">{value?.tier?.toLowerCase() || "unknown"} tier</p>
         </div>
       ),
@@ -240,128 +237,13 @@ export default function OrdersPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setSelectedOrder(row)}
+            onClick={() => handleViewOrder(row.id)}
             className="text-accent hover:bg-accent/10"
           >
             <Eye className="w-4 h-4" />
           </Button>
         )}
       />
-
-      {/* Order Details Dialog */}
-      <Dialog open={!!selectedOrder} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <DialogContent className="bg-card border-border/50 max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-accent">Order Details</DialogTitle>
-            <DialogDescription>View and update order information</DialogDescription>
-          </DialogHeader>
-
-          {selectedOrder && (
-            <div className="space-y-6">
-              {/* Customer & Order Info */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-primary/30 rounded-lg border border-border/30">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Customer</p>
-                  <p className="text-foreground font-semibold">{selectedOrder.user?.email}</p>
-                  {selectedOrder.user?.company && (
-                    <p className="text-sm text-muted-foreground">{selectedOrder.user.company}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground capitalize mt-1">
-                    {selectedOrder.user?.tier?.toLowerCase() || "unknown"} tier
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total</p>
-                  <p className="text-2xl font-bold text-accent">
-                    ${Number((selectedOrder.totalAmount ?? selectedOrder.totalPrice) || 0).toFixed(2)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Order #: {selectedOrder.orderId}
-                  </p>
-                </div>
-              </div>
-
-              {/* Order Items */}
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide mb-3 font-semibold">
-                  Items ({selectedOrder.items?.length || 0})
-                </p>
-                <div className="space-y-3">
-                  {selectedOrder.items?.map((item: any, idx: number) => (
-                    <div key={item.id || idx} className="p-3 bg-primary/20 rounded-lg border border-border/30">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <p className="text-foreground font-medium">{item.product?.name || "Product"}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {item.strain && (
-                              <Badge variant="outline" className="text-xs bg-green-500/10 text-green-700">
-                                {item.strain}
-                              </Badge>
-                            )}
-                            <Badge variant="secondary" className="text-xs">
-                              {item.quantity} unit{item.quantity > 1 ? 's' : ''}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-accent">${Number(item.totalPrice || 0).toFixed(2)}</p>
-                          <p className="text-xs text-muted-foreground">${Number(item.unitPrice || 0).toFixed(2)} each</p>
-                        </div>
-                      </div>
-                      {/* Product details */}
-                      {(item.product?.weight || item.product?.potency) && (
-                        <div className="flex gap-4 text-xs text-muted-foreground mt-2">
-                          {item.product?.weight && <span>📦 {item.product.weight}</span>}
-                          {item.product?.potency && <span>⚡ {item.product.potency}</span>}
-                        </div>
-                      )}
-                      {item.notes && (
-                        <div className="mt-2 p-2 bg-primary/30 rounded text-xs">
-                          <p className="text-muted-foreground">Note: {item.notes}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Status Update */}
-              <div className="space-y-3 p-4 bg-primary/30 rounded-lg border border-border/30">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Update Status</p>
-                <Select
-                  value={selectedOrder.status}
-                  onValueChange={(newStatus) => handleStatusUpdate(selectedOrder.id, newStatus)}
-                  disabled={updatingStatus === selectedOrder.id}
-                >
-                  <SelectTrigger className="bg-primary/50 border-border/50">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="APPROVED">Approved</SelectItem>
-                    <SelectItem value="PAID">Paid</SelectItem>
-                    <SelectItem value="FULFILLED">Fulfilled</SelectItem>
-                    <SelectItem value="REJECTED">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Order Metadata */}
-              {selectedOrder.notes && (
-                <div className="p-3 bg-primary/20 rounded-lg border border-border/30">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2 font-semibold">Order Notes</p>
-                  <p className="text-foreground text-sm">{selectedOrder.notes}</p>
-                </div>
-              )}
-
-              <div className="text-xs text-muted-foreground space-y-1 p-3 bg-primary/20 rounded-lg">
-                <p>Created: {new Date(selectedOrder.createdAt).toLocaleString()}</p>
-                <p>Updated: {new Date(selectedOrder.updatedAt).toLocaleString()}</p>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

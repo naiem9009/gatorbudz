@@ -150,9 +150,9 @@ export default function ProductPage() {
     return (
       <main className="min-h-screen bg-background">
       <header className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4 p-4">
+        <Link href={'/'} className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4 p-4">
           <Image src={"/my-logo.png"} alt="Gatorbudz logo" width={600} height={400} />
-        </div>
+        </Link>
       </header>
 
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16">
@@ -170,10 +170,14 @@ export default function ProductPage() {
     )
   }
 
-  if (!product) {
+  if (!product?.id) {
     return (
       <main className="min-h-screen bg-background">
-        <Header />
+        <header className="max-w-5xl mx-auto">
+          <Link href={'/'} className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4 p-4">
+            <Image src={"/my-logo.png"} alt="Gatorbudz logo" width={600} height={400} />
+          </Link>
+        </header>
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 text-center">
           <h1 className="text-2xl font-bold text-foreground mb-4">Product Not Found</h1>
           <Link href="/products" className="text-accent hover:underline">
@@ -198,9 +202,9 @@ export default function ProductPage() {
   return (
     <main className="min-h-screen bg-background">
       <header className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4 p-4">
+        <Link href={'/'} className="flex items-center justify-center h-full border border-[#49B281] mt-4 md:mx-0 mx-4 p-4">
           <Image src={"/my-logo.png"} alt="Gatorbudz logo" width={600} height={400} />
-        </div>
+        </Link>
       </header>
 
 

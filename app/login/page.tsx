@@ -52,21 +52,21 @@ export default function LoginPage() {
     }
   }, [formData.email, formData.password, router, callback])
 
-  const handleOAuth = useCallback(
-    async (provider: "google") => {
-      setError("")
-      setOauthLoading(provider)
-      try {
-        await signIn.social({
-          provider,
-        })
-      } catch {
-        setError(`Could not start ${provider} sign-in. Please try again.`)
-        setOauthLoading(null)
-      }
-    },
-    [callback, setError, setOauthLoading]
-  )
+  // const handleOAuth = useCallback(
+  //   async (provider: "google") => {
+  //     setError("")
+  //     setOauthLoading(provider)
+  //     try {
+  //       await signIn.social({
+  //         provider,
+  //       })
+  //     } catch {
+  //       setError(`Could not start ${provider} sign-in. Please try again.`)
+  //       setOauthLoading(null)
+  //     }
+  //   },
+  //   [callback, setError, setOauthLoading]
+  // )
 
   const togglePasswordVisibility = useCallback(() => {
     setShowPassword(!showPassword)
@@ -80,7 +80,7 @@ export default function LoginPage() {
         {/* Brand Header */}
         <div className="text-center space-y-3">
           <Link href="/" className="inline-block">
-            <Image src={'/logo.png'} width={300} height={300} alt="Gator Budz Logo" className="text-4xl font-bold bg-gradient-to-r from-foreground to-accent bg-clip-text text-transparent" />
+            <Image src={'/my-logo.png'} width={300} height={300} alt="Gator Budz Logo" className="text-4xl font-bold bg-gradient-to-r from-foreground to-accent bg-clip-text text-transparent" />
           </Link>
         </div>
 
@@ -94,7 +94,7 @@ export default function LoginPage() {
           
           <CardContent className="space-y-6">
             {/* Social Sign-in Buttons */}
-            <div className="space-y-3">
+            {/* <div className="space-y-3">
               <Button
                 type="button"
                 variant="outline"
@@ -115,17 +115,17 @@ export default function LoginPage() {
                 )}
               </Button>
 
-            </div>
+            </div> */}
 
             {/* Divider */}
-            <div className="relative">
+            {/* <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
                 <span className="bg-card px-3 text-muted-foreground font-medium">Or with email</span>
               </div>
-            </div>
+            </div> */}
 
             {/* Email + Password Form */}
             <form onSubmit={handleSubmit} className="space-y-5">

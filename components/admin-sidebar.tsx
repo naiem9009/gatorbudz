@@ -25,7 +25,7 @@ const menuItems = [
   { label: "Invoices", href: "/admin-dashboard/invoices", icon: Receipt },
   { label: "Tier Proposals", href: "/admin-dashboard/tier-proposals", icon: ClipboardList },
   { label: "Audit Logs", href: "/admin-dashboard/audit-logs", icon: FileText },
-  { label: "Analytics", href: "/admin-dashboard/analytics", icon: BarChart3 },
+  // { label: "Analytics", href: "/admin-dashboard/analytics", icon: BarChart3 },
 ]
 
 export default function AdminSidebar() {

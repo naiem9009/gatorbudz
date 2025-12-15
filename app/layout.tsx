@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/lib/auth-context"
 import { CartProvider } from "@/lib/cart-context"
+import InactiveWarning from "@/components/inactive-warning"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
@@ -23,6 +24,7 @@ export default function RootLayout({
       <body className={`font-sans antialiased`}>
         <AuthProvider>
           <CartProvider>
+            <InactiveWarning />
             {children}
           </CartProvider>
         </AuthProvider>

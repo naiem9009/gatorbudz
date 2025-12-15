@@ -12,16 +12,36 @@ datasource db {
 
 // User model with role and tier
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String?
-  company       String?
-  role          Role     @default(PUBLIC)
-  tier          Tier     @default(GOLD)
-  emailVerified Boolean  @default(false)
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String?
+  company         String?
+  phone           String?
+  role            Role     @default(PUBLIC)
+  tier            Tier     @default(NONE)
+  emailVerified   Boolean  @default(false)
+  image           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  licenseVerified Boolean  @default(false)
+  accountStatus   String   @default("PENDING_REVIEW")
+
+  // Billing (structured)
+  billingAddress1   String?
+  billingAddress2   String?
+  billingCity       String?
+  billingState      String?
+  billingPostalCode String?
+  billingCountry    String?
+
+  // Shipping (structured)
+  shippingAddress1   String?
+  shippingAddress2   String?
+  shippingCity       String?
+  shippingState      String?
+  shippingPostalCode String?
+  shippingCountry    String?
 
   // Relations
   orderRequests         OrderRequest[]
@@ -31,17 +51,32 @@ model User {
   tierProposalDecisions TierChangeProposal[] @relation("decidedBy")
   auditLogs             AuditLog[]           @relation("actor")
   notes                 UserNote[]
-  plaidLinkTokens      PlaidLinkToken[]
-  plaidAccounts        PlaidAccount[]
-  dwollaCustomer       DwollaCustomer?
-  dwollaFundingSources DwollaFundingSource[]
-
-  sessions Session[]
-  accounts Account[]
+  sessions              Session[]
+  accounts              Account[]
 
   @@index([email])
   @@index([role])
   @@index([tier])
+  @@index([accountStatus])
+}
+
+
+model UserFile {
+  id          String   @id @default(cuid())
+  userId      String
+  fileName    String
+  filePath    String
+  fileType    String
+  fileSize    Int
+  category    String   // LICENSE, INVOICE, OTHER
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([category])
 }
 
 model Session {
@@ -214,22 +249,6 @@ model Invoice {
   paymentMethod   PaymentMethod?
   paidAt          DateTime?
   paymentNotes    String?
-
-  // Stripe integration
-  stripeInvoiceId String?
-  stripeUrl       String?
-
-  businessAccountId String?
-  businessAccount   BusinessAccount? @relation(fields: [businessAccountId], references: [id])
-
-  // NowPayments integration
-  nowpaymentsInvoiceId String?
-  nowpaymentsUrl       String?
-
-  dwollaTransferId     String?
-  dwollaFundingSourceId String?
-  dwollaStatus         String? // PENDING, PROCESSING, COMPLETED, FAILED
-
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -238,7 +257,6 @@ model Invoice {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   order       OrderRequest? @relation(fields: [orderRequestId], references: [id], onDelete: Cascade)
   payments    Payment[]
-  dwollaFundingSource DwollaFundingSource? @relation(fields: [dwollaFundingSourceId], references: [id])
 
   @@index([userId])
   @@index([status])
@@ -255,8 +273,6 @@ model Payment {
   status           String   // PENDING, COMPLETED, FAILED
   reference        String?  // Zelle reference, transaction ID, etc.
   
-  dwollaTransferId String?
-  dwollaUrl        String?
   
   notes            String?
 
@@ -270,34 +286,10 @@ model Payment {
 
   @@index([invoiceId])
   @@index([reference])
-  @@index([dwollaTransferId])
   @@index([createdAt])
   @@map("payment")
 }
 
-// File upload model
-model UserFile {
-  id         String    @id @default(cuid())
-  userId     String
-  fileType   FileType
-  fileName   String
-  url        String // bunny.net URL
-  size       Int // File size in bytes
-  flagged    Boolean   @default(false)
-  reviewNote String?
-  reviewedBy String?
-  reviewedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([fileType])
-  @@index([flagged])
-}
 
 // Tier change proposal model
 model TierChangeProposal {
@@ -362,6 +354,7 @@ model AuditLog {
 
 // Enums
 enum Role {
+  REJECTED
   PUBLIC
   VERIFIED
   MANAGER
@@ -369,6 +362,7 @@ enum Role {
 }
 
 enum Tier {
+  NONE
   GOLD
   PLATINUM
   DIAMOND
@@ -378,8 +372,10 @@ enum OrderStatus {
   PENDING
   APPROVED
   PAID
-  REJECTED
+  READY_TO_SHIP
+  SHIPPED
   FULFILLED
+  REJECTED
 }
 
 enum InvoiceStatus {
@@ -391,19 +387,7 @@ enum InvoiceStatus {
 }
 
 enum PaymentMethod {
-  ZELLE
-  NOWPAYMENTS
-  STRIPE
   MANUAL
-  DWOLLA
-}
-
-enum FileType {
-  LICENSE
-  ID
-  DOCUMENT
-  COA
-  OTHER
 }
 
 enum ProductStatus {
@@ -416,109 +400,6 @@ enum ProposalStatus {
   PENDING
   APPROVED
   REJECTED
-}
-
-model PlaidLinkToken {
-  id        String   @id @default(cuid())
-  userId    String
-  linkToken String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@map("plaid_link_token")
-}
-
-model PlaidAccount {
-  id                String   @id @default(cuid())
-  userId            String
-  accountId         String
-  accessToken       String
-  bankName          String
-  accountName       String
-  accountMask       String
-  accountSubtype    String
-  verificationStatus String @default("PENDING")
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, accountId])
-  @@index([userId])
-  @@index([verificationStatus])
-  @@map("plaid_account")
-}
-
-model DwollaCustomer {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  dwollaId  String   @unique
-  email     String
-  firstName String
-  lastName  String
-  status    String   @default("UNVERIFIED") // UNVERIFIED, VERIFIED, SUSPENDED
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([dwollaId])
-  @@index([status])
-  @@index([createdAt])
-  @@map("dwolla_customer")
-}
-
-model DwollaFundingSource {
-  id               String   @id @default(cuid())
-  userId           String
-  dwollaId         String   @unique
-  dwollaCustomerId String
-  bankName         String
-  accountName      String
-  accountMask      String
-  bankAccountType  String
-  verified         Boolean  @default(false)
-  removed          Boolean  @default(false)
-  invoices        Invoice[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, accountMask])
-  @@index([userId])
-  @@index([dwollaId])
-  @@index([verified])
-  @@index([removed])
-  @@index([createdAt])
-  @@map("dwolla_funding_source")
-}
-
-model BusinessAccount {
-  id          String   @id @default(cuid())
-  name        String
-  dwollaId    String   @unique
-  email       String
-  type        String   @default("business")
-  status      String   @default("verified")
-  
-  businessName     String
-  businessType     String
-  businessAddress  Json?
-  taxId            String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  invoices Invoice[]
-
-  @@map("business_account")
 }
 
 

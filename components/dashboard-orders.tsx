@@ -183,12 +183,6 @@ export default function DashboardOrders() {
                         Invoice #{order.invoice!.invoiceNumber}
                       </h4>
                       <div className="flex gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/dashboard/invoices/${order.invoice!.invoiceNumber}`}>
-                            <ExternalLink className="w-4 h-4 mr-1" />
-                            View Details
-                          </Link>
-                        </Button>
                         {order.invoice!.status === "PENDING" && (
                           <Button size="sm" asChild className="bg-green-600 hover:bg-green-700 text-white">
                             <Link href={`dashboard/invoices-payment?id=${order.invoice!.id}`}>
@@ -233,11 +227,11 @@ export default function DashboardOrders() {
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="secondary" className="bg-purple-500/10 text-purple-700">
                             <CreditCard className="w-3 h-3 mr-1" />
-                            ACH Bank Transfer
+                            Zelle
                           </Badge>
                           <Badge variant="secondary" className="bg-green-500/10 text-green-700">
                             <Banknote className="w-3 h-3 mr-1" />
-                            Manual Bank Transfer
+                            Wire & ACH
                           </Badge>
                         </div>
                       </div>

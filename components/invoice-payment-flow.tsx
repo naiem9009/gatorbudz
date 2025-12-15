@@ -15,6 +15,7 @@ import {
   Shield,
   CreditCard,
   Wallet,
+  LucideBanknote,
 } from "lucide-react"
 import { format } from "date-fns"
 import BankAccountLinker from "./bank-account-linker"
@@ -34,25 +35,16 @@ interface Invoice {
   payments?: any[]
 }
 
-interface LinkedAccount {
-  id: string
-  accountName: string
-  bankName: string
-  accountMask: string
-  verificationStatus: string
-}
 
 interface InvoicePaymentFlowProps {
   invoiceId: string
-  onPaymentInitiated?: () => void
 }
 
-export default function InvoicePaymentFlow({ invoiceId, onPaymentInitiated }: InvoicePaymentFlowProps) {
+export default function InvoicePaymentFlow({ invoiceId }: InvoicePaymentFlowProps) {
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
   const [paymentLoading, setPaymentLoading] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<"dwolla" | "manual">("dwolla")
-  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
+  const [paymentMethod, setPaymentMethod] = useState<"zelle" | "ach" | "wire">("zelle")
   const [selectedFundingSource, setSelectedFundingSource] = useState("")
   const [showLinkBank, setShowLinkBank] = useState(false)
   const [showSuccessFlow, setShowSuccessFlow] = useState(false)
@@ -60,118 +52,29 @@ export default function InvoicePaymentFlow({ invoiceId, onPaymentInitiated }: In
   const [accountsFetched, setAccountsFetched] = useState(false)
 
   useEffect(() => {
-    console.log("[v0] Fetching invoice with ID:", invoiceId)
+    console.log("Fetching invoice with ID:", invoiceId)
     fetchInvoice()
   }, [invoiceId])
-
-  useEffect(() => {
-    if (paymentMethod === "dwolla" && !accountsFetched) {
-      fetchLinkedAccounts()
-    }
-  }, [paymentMethod, accountsFetched])
 
   async function fetchInvoice() {
     try {
       setLoading(true)
-      console.log("[v0] Fetching invoice...")
+      console.log("Fetching invoice...")
       const response = await fetch(`/api/invoices/${invoiceId}`)
       if (response.ok) {
         const data = await response.json()
-        console.log("[v0] Invoice data:", data)
+        console.log("Invoice data:", data)
         setInvoice(data)
       } else {
-        console.error("[v0] Failed to fetch invoice, status:", response.status)
+        console.error("Failed to fetch invoice, status:", response.status)
       }
     } catch (error) {
-      console.error("[v0] Error fetching invoice:", error)
+      console.error("Error fetching invoice:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  async function fetchLinkedAccounts() {
-    try {
-      console.log("[v0] Fetching linked accounts...")
-      const response = await fetch("/api/payments/dwolla/funding-sources")
-      const data = await response.json()
-      const accounts = data.fundingSources || []
-      console.log("[v0] Linked accounts:", accounts)
-
-      const formattedAccounts = accounts.map((source: any) => ({
-        id: source.id,
-        accountName: source.accountName,
-        bankName: source.bankName,
-        accountMask: source.accountMask,
-        verificationStatus: source.verified ? "VERIFIED" : "PENDING",
-      }))
-
-      setLinkedAccounts(formattedAccounts)
-
-      if (formattedAccounts.length === 0) {
-        setShowLinkBank(true)
-      } else {
-        setShowLinkBank(false)
-      }
-
-      setAccountsFetched(true)
-    } catch (error) {
-      console.error("[v0] Failed to fetch linked accounts:", error)
-      setShowLinkBank(true)
-      setAccountsFetched(true)
-    }
-  }
-
-  const handleAccountLinked = (accounts: LinkedAccount[]) => {
-    console.log("[v0] Account linked - accounts:", accounts)
-    setLinkedAccounts(accounts)
-    if (accounts.length > 0) {
-      console.log("[v0] Setting first account as selected:", accounts[0].id)
-      setShowLinkBank(false)
-      setSelectedFundingSource(accounts[0].id)
-      setPaymentMethod("dwolla")
-      setStep(2)
-    } else {
-      console.log("[v0] No accounts returned from linker")
-      setShowLinkBank(true)
-    }
-  }
-
-  const handlePaymentWithDwolla = async () => {
-    if (!selectedFundingSource || !invoice) {
-      alert("Please select a funding source")
-      return
-    }
-
-    setPaymentLoading(true)
-    try {
-      const response = await fetch("/api/payments/dwolla/initiate-transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          invoiceId: invoice.id,
-          fundingSourceId: selectedFundingSource,
-          amount: invoice.total,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setShowSuccessFlow(true)
-        setTimeout(() => {
-          fetchInvoice()
-          onPaymentInitiated?.()
-        }, 3000)
-      } else {
-        alert(data.error || "Payment failed")
-      }
-    } catch (error) {
-      console.error("[v0] Payment error:", error)
-      alert("Failed to process payment")
-    } finally {
-      setPaymentLoading(false)
-    }
-  }
 
   if (loading) {
     return (
@@ -194,20 +97,6 @@ export default function InvoicePaymentFlow({ invoiceId, onPaymentInitiated }: In
           </div>
         </CardContent>
       </Card>
-    )
-  }
-
-  if (showSuccessFlow) {
-    return (
-      <PaymentSuccessFlow
-        invoiceId={invoice.id}
-        amount={invoice.total}
-        invoiceNumber={invoice.invoiceNumber}
-        bankAccount={
-          selectedFundingSource ? linkedAccounts.find((f) => f.id === selectedFundingSource)?.accountName : undefined
-        }
-        transferDate={new Date().toISOString()}
-      />
     )
   }
 
@@ -280,169 +169,130 @@ export default function InvoicePaymentFlow({ invoiceId, onPaymentInitiated }: In
                 {/* Payment Method Selector */}
                 <div>
                   <h3 className="text-lg font-bold text-white mb-4">Select Payment Method</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <button
                       onClick={() => {
-                        setPaymentMethod("dwolla")
+                        setPaymentMethod("zelle")
                         setStep(2)
                       }}
                       className={`p-6 rounded-xl border-2 transition-all ${
-                        paymentMethod === "dwolla"
+                        paymentMethod === "zelle"
                           ? "border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20"
                           : "border-slate-600 bg-slate-700/30 hover:border-blue-400"
                       }`}
                     >
                       <div className="flex items-start gap-4">
                         <div
-                          className={`p-3 rounded-lg ${paymentMethod === "dwolla" ? "bg-blue-500" : "bg-slate-600"}`}
+                          className={`p-3 rounded-lg ${paymentMethod === "zelle" ? "bg-blue-500" : "bg-slate-600"}`}
                         >
                           <Wallet
-                            className={`w-6 h-6 ${paymentMethod === "dwolla" ? "text-white" : "text-slate-300"}`}
+                            className={`w-6 h-6 ${paymentMethod === "zelle" ? "text-white" : "text-slate-300"}`}
                           />
                         </div>
                         <div className="text-left flex-1">
-                          <h4 className="font-bold text-white">ACH Transfer</h4>
-                          <p className="text-sm text-slate-400 mt-1">Fastest & most secure</p>
-                          <p className="text-xs text-green-400 font-medium mt-2">✓ Instant confirmation</p>
+                          <h4 className="font-bold text-white">Zelle</h4>
+                          <p className="text-sm text-slate-400 mt-1">Follow Instructions</p>
                         </div>
                       </div>
                     </button>
 
                     <button
                       onClick={() => {
-                        setPaymentMethod("manual")
+                        setPaymentMethod("ach")
                         setStep(2)
                       }}
                       className={`p-6 rounded-xl border-2 transition-all ${
-                        paymentMethod === "manual"
+                        paymentMethod === "ach"
                           ? "border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20"
                           : "border-slate-600 bg-slate-700/30 hover:border-blue-400"
                       }`}
                     >
                       <div className="flex items-start gap-4">
                         <div
-                          className={`p-3 rounded-lg ${paymentMethod === "manual" ? "bg-blue-500" : "bg-slate-600"}`}
+                          className={`p-3 rounded-lg ${paymentMethod === "ach" ? "bg-blue-500" : "bg-slate-600"}`}
                         >
                           <CreditCard
-                            className={`w-6 h-6 ${paymentMethod === "manual" ? "text-white" : "text-slate-300"}`}
+                            className={`w-6 h-6 ${paymentMethod === "ach" ? "text-white" : "text-slate-300"}`}
                           />
                         </div>
                         <div className="text-left flex-1">
-                          <h4 className="font-bold text-white">Manual Payment</h4>
-                          <p className="text-sm text-slate-400 mt-1">Wire or bank transfer</p>
-                          <p className="text-xs text-blue-400 font-medium mt-2">✓ 1-2 business days</p>
+                          <h4 className="font-bold text-white">ACH</h4>
+                          <p className="text-sm text-slate-400 mt-1">Follow Instructions</p>
+                        </div>
+                      </div>
+                    </button>
+
+
+                    <button
+                      onClick={() => {
+                        setPaymentMethod("wire")
+                        setStep(2)
+                      }}
+                      className={`p-6 rounded-xl border-2 transition-all ${
+                        paymentMethod === "wire"
+                          ? "border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/20"
+                          : "border-slate-600 bg-slate-700/30 hover:border-blue-400"
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={`p-3 rounded-lg ${paymentMethod === "wire" ? "bg-blue-500" : "bg-slate-600"}`}
+                        >
+                          <LucideBanknote
+                            className={`w-6 h-6 ${paymentMethod === "wire" ? "text-white" : "text-slate-300"}`}
+                          />
+                        </div>
+                        <div className="text-left flex-1">
+                          <h4 className="font-bold text-white">Wire</h4>
+                          <p className="text-sm text-slate-400 mt-1">Follow Instructions</p>
                         </div>
                       </div>
                     </button>
                   </div>
                 </div>
 
-                {/* ACH Transfer Method */}
-                {paymentMethod === "dwolla" && (
-                  <div className="space-y-4 pt-4">
-                    <h3 className="text-lg font-bold text-white">Link Bank Account</h3>
 
-                    {linkedAccounts.length > 0 && !showLinkBank ? (
-                      <div className="space-y-4">
-                        <label className="block text-sm font-semibold text-slate-200">Select Your Bank Account</label>
-                        <div className="space-y-3">
-                          {linkedAccounts.map((source) => (
-                            <button
-                              key={source.id}
-                              onClick={() => setSelectedFundingSource(source.id)}
-                              className={`w-full p-5 rounded-xl border-2 transition-all text-left ${
-                                selectedFundingSource === source.id
-                                  ? "border-blue-500 bg-blue-500/10 shadow-lg shadow-blue-500/10"
-                                  : "border-slate-600 bg-slate-700/30 hover:border-blue-400"
-                              }`}
-                            >
-                              <div className="flex items-center gap-4">
-                                <div
-                                  className={`p-3 rounded-lg ${selectedFundingSource === source.id ? "bg-blue-500" : "bg-slate-600"}`}
-                                >
-                                  <Wallet
-                                    className={`w-5 h-5 ${selectedFundingSource === source.id ? "text-white" : "text-slate-300"}`}
-                                  />
-                                </div>
-                                <div className="flex-1">
-                                  <p className="font-bold text-white">{source.accountName}</p>
-                                  <p className="text-sm text-slate-400">
-                                    {source.bankName} • ••••{source.accountMask}
-                                  </p>
-                                </div>
-                                <div
-                                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                                    selectedFundingSource === source.id
-                                      ? "border-blue-500 bg-blue-500"
-                                      : "border-slate-500"
-                                  }`}
-                                >
-                                  {selectedFundingSource === source.id && (
-                                    <div className="w-2 h-2 bg-white rounded-full" />
-                                  )}
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-
-                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 flex gap-3">
-                          <Shield className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                          <div>
-                            <p className="font-semibold text-blue-200 text-sm">Bank-Level Security</p>
-                            <p className="text-xs text-blue-300/80 mt-1">
-                              Your bank details are encrypted and never stored on our servers.
-                            </p>
-                          </div>
-                        </div>
-
-                        <Button
-                          onClick={handlePaymentWithDwolla}
-                          disabled={paymentLoading || !selectedFundingSource}
-                          className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 h-14 text-lg font-bold rounded-xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {paymentLoading ? (
-                            <>
-                              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                              Processing Payment...
-                            </>
-                          ) : (
-                            <>
-                              <Lock className="w-5 h-5 mr-2" />
-                              Pay ${invoice.total.toFixed(2)} Securely
-                            </>
-                          )}
-                        </Button>
-
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            console.log("[v0] Add Different Account clicked")
-                            setShowLinkBank(true)
-                            setSelectedFundingSource("")
-                          }}
-                          className="w-full h-12 text-base font-semibold rounded-xl border-slate-600 bg-slate-700/30 text-slate-200 hover:bg-slate-600/50"
-                        >
-                          + Add Different Account
-                        </Button>
-                      </div>
-                    ) : showLinkBank ? (
-                      <BankAccountLinker onAccountLinked={handleAccountLinked} />
-                    ) : null}
-                  </div>
-                )}
-
-                {/* Manual Payment Method */}
-                {paymentMethod === "manual" && (
+                {paymentMethod === "zelle" && (
                   <div className="space-y-4 pt-4">
                     <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-6 space-y-4">
                       <div className="flex items-start gap-3">
                         <Clock className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" />
                         <div>
                           <h4 className="font-bold text-amber-200 text-lg">Manual Payment</h4>
-                          <p className="text-sm text-amber-300/80 mt-1">
-                            Complete payment through bank transfer. Typically takes 1-2 business days.
-                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-700/50 rounded-lg p-4 space-y-3 text-sm">
+                        <div className="flex justify-between border-b border-slate-600 pb-2">
+                          <span className="text-slate-400 font-medium">Amount:</span>
+                          <span className="font-bold text-white">${invoice.total.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-600 pb-2">
+                          <span className="text-slate-400 font-medium">Invoice #:</span>
+                          <span className="font-bold text-white">{invoice.invoiceNumber}</span>
+                        </div>
+                        <p className="text-md text-slate-400 pt-2 font-bold">
+                          support@smaugsvault.com
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button
+                      className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 h-12 text-base font-bold rounded-xl"
+                      onClick={() => (window.location.href = `/api/invoices/${invoice.id}/download`)}
+                    >
+                      <Download className="w-5 h-5 mr-2" />
+                      Download Invoice Details
+                    </Button>
+                  </div>
+                )}
+                {paymentMethod === "wire" && (
+                  <div className="space-y-4 pt-4">
+                    <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-6 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <Clock className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-bold text-amber-200 text-lg">Manual Payment</h4>
                         </div>
                       </div>
 
@@ -456,7 +306,49 @@ export default function InvoicePaymentFlow({ invoiceId, onPaymentInitiated }: In
                           <span className="font-bold text-white">{invoice.invoiceNumber}</span>
                         </div>
                         <p className="text-xs text-slate-400 pt-2">
-                          Please contact our support team at support@example.com for complete wire transfer details.
+                          Bank Number: 485016575092
+                        </p>
+                        <p className="text-xs text-slate-400 pt-2">
+                          Routing Number: 026009593
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button
+                      className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700 h-12 text-base font-bold rounded-xl"
+                      onClick={() => (window.location.href = `/api/invoices/${invoice.id}/download`)}
+                    >
+                      <Download className="w-5 h-5 mr-2" />
+                      Download Invoice Details
+                    </Button>
+                  </div>
+                )}
+
+                {/* ach Payment Method */}
+                {paymentMethod === "ach" && (
+                  <div className="space-y-4 pt-4">
+                    <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-6 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <Clock className="w-6 h-6 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-bold text-amber-200 text-lg">Manual Payment</h4>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-700/50 rounded-lg p-4 space-y-3 text-sm">
+                        <div className="flex justify-between border-b border-slate-600 pb-2">
+                          <span className="text-slate-400 font-medium">Amount:</span>
+                          <span className="font-bold text-white">${invoice.total.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-600 pb-2">
+                          <span className="text-slate-400 font-medium">Invoice #:</span>
+                          <span className="font-bold text-white">{invoice.invoiceNumber}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 pt-2">
+                          Bank Number: 485016575092
+                        </p>
+                        <p className="text-xs text-slate-400 pt-2">
+                          Routing Number: 323070380
                         </p>
                       </div>
                     </div>

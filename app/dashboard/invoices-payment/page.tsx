@@ -156,11 +156,6 @@ function InvoicePaymentContent() {
           </Button>
           <InvoicePaymentFlow
             invoiceId={selectedInvoiceId}
-            onPaymentInitiated={() => {
-              fetchInvoices()
-              setShowPaymentFlow(false)
-              window.history.pushState({}, "", "/dashboard/invoices-payment")
-            }}
           />
         </div>
       </div>

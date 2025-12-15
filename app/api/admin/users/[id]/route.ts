@@ -23,6 +23,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
     const updates = updateUserSchema.parse(body)
 
+    if (updates.role === "VERIFIED") {
+      await prisma.user.update({
+        where: { id: (await params).id },
+        data: {licenseVerified: true}
+      })
+    }
+
     const user = await prisma.user.update({
       where: { id: (await params).id },
       data: updates,
@@ -75,5 +82,65 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     return NextResponse.json({ success: true })
   } catch (error) {
     return NextResponse.json({ error: "Failed to delete user" }, { status: 500 })
+  }
+}
+
+
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth.api.getSession({ headers: request.headers })
+    if (!session || session.user.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: (await params).id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        company: true,
+        phone: true,
+        role: true,
+        tier: true,
+        emailVerified: true,
+        licenseVerified: true,
+        accountStatus: true,
+        billingAddress1: true,
+        billingAddress2: true,
+        billingCity: true,
+        billingState: true,
+        billingPostalCode: true,
+        billingCountry: true,
+        shippingAddress1: true,
+        shippingAddress2: true,
+        shippingCity: true,
+        shippingState: true,
+        shippingPostalCode: true,
+        shippingCountry: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            orderRequests: true,
+            invoices: true,
+            userFiles: true,
+          }
+        }
+      }
+    })
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ user })
+  } catch (error) {
+    console.error("Error fetching user:", error)
+    return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 })
   }
 }

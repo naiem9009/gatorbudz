@@ -29,16 +29,6 @@ export default function Header() {
           <Image src="/my-logo.png" alt="Gator Budz Logo" width={150} height={150} />
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-8">
-          <Link href="/products" className="text-foreground hover:text-accent transition text-sm">
-            Products
-          </Link>
-          <Link href="/contact" className="text-foreground hover:text-accent transition text-sm">
-            Contact
-          </Link>
-        </nav>
-
         {/* Desktop Auth & Cart Section */}
         <div className="hidden md:flex items-center gap-4">
           {isAuthenticated && user?.role !== "PUBLIC" && <Link href="/cart" className="relative p-2 text-foreground hover:text-accent transition">
@@ -105,7 +95,7 @@ export default function Header() {
                   </Link> }
 
                   <Link
-                    href="/profile"
+                    href="/dashboard/account"
                     className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted transition"
                     onClick={() => setIsUserMenuOpen(false)}
                   >
@@ -158,22 +148,7 @@ export default function Header() {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden border-t border-border bg-background">
-          <nav className="flex flex-col gap-0 p-4">
-            <Link 
-              href="/products" 
-              className="py-3 text-foreground hover:text-accent text-sm border-b border-border"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Products
-            </Link>
-            <Link 
-              href="/contact" 
-              className="py-3 text-foreground hover:text-accent text-sm border-b border-border"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Contact
-            </Link>
-            
+          <nav className="flex flex-col gap-0 p-4">            
             <div className="pt-3 mt-3">
               {user ? (
                 <>
@@ -222,7 +197,7 @@ export default function Header() {
 
 
                   <Link 
-                    href="/profile" 
+                    href="/dashboard/account" 
                     className="flex items-center gap-3 py-3 text-foreground hover:text-accent text-sm border-b border-border"
                     onClick={() => setIsMenuOpen(false)}
                   >

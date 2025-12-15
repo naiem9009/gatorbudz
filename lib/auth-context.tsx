@@ -3,18 +3,21 @@
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { useSession, signOut } from "@/lib/auth-client"
+import { User } from "better-auth"
 
 export type Role = "PUBLIC" | "VERIFIED" | "MANAGER" | "ADMIN"
-export type Tier = "GOLD" | "PLATINUM" | "DIAMOND"
+export type Tier = "NONE" | "GOLD" | "PLATINUM" | "DIAMOND" // Added NONE based on your Prisma schema
 
 export interface AuthUser {
   id: string
   email: string
   name?: string
   company?: string
+  phone?: string
   role: Role
   tier: Tier
   image?: string | null
+  updatedAt?: Date
 }
 
 interface AuthContextType {
@@ -22,6 +25,7 @@ interface AuthContextType {
   loading: boolean
   isAuthenticated: boolean
   logout: () => Promise<void>
+  updateUser: (userData: Partial<AuthUser>) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -39,9 +43,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: u.email,
         name: u.name,
         company: u.company,
-        role: (u.role as Role) ?? "VERIFIED",
-        tier: (u.tier as Tier) ?? "GOLD",
-        image: u.image ?? null,
+        phone: u.phone,
+        role: (u.role as Role) || "VERIFIED",
+        tier: (u.tier as Tier) || "NONE",
+        image: u.image || null,
+        updatedAt: u.updatedAt ? new Date(u.updatedAt) : undefined,
       })
     } else {
       setUser(null)
@@ -58,6 +64,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const updateUser = (userData: Partial<AuthUser>) => {
+    setUser(prev => prev ? { ...prev, ...userData } : null)
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -65,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         isAuthenticated: !!user,
         logout,
+        updateUser,
       }}
     >
       {children}

@@ -14,14 +14,38 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
+    const userId = searchParams.get("userId")
 
     const where: any = {}
 
-    // Users see their own orders
+    // VERIFIED users can only see their own orders
     if (session.user.role === "VERIFIED") {
       where.userId = session.user.id
+    } 
+    // MANAGER and ADMIN need to specify userId to see specific user's orders
+    else if (["MANAGER", "ADMIN"].includes(session.user.role)) {
+      if (userId) {
+        where.userId = userId
+      } else {
+        // Return empty array for admin without userId
+        return NextResponse.json(
+          { 
+            success: true, 
+            data: [],
+            message: "Please provide a userId parameter to view specific user's orders"
+          },
+          { status: 200 }
+        )
+        
+        // OR return error instead (uncomment if preferred):
+        // return NextResponse.json(
+        //   { error: "userId parameter is required for admin/manager users" },
+        //   { status: 400 }
+        // )
+      }
     }
 
+    // Apply status filter if provided
     if (status) where.status = status
 
     const orders = await prisma.orderRequest.findMany({
@@ -44,7 +68,15 @@ export async function GET(request: NextRequest) {
             createdAt: 'asc'
           }
         },
-        invoice: true, 
+        invoice: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        }
       },
       orderBy: { createdAt: "desc" },
     })
@@ -61,7 +93,6 @@ export async function GET(request: NextRequest) {
       }))
     }))
     
-
     return NextResponse.json({ success: true, data: normalized })
   } catch (error) {
     console.error("Error fetching orders:", error)

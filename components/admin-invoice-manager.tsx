@@ -34,7 +34,7 @@ interface Invoice {
   status: string
   issueDate: string
   dueDate: string
-  user?: { id: string; email: string; company: string }
+  user?: { id: string; email: string; company: string, name: string }
   payments?: any[]
   notes?: string
 }
@@ -627,7 +627,7 @@ export default function AdminInvoiceManager() {
                             <div className="flex-1 min-w-0">
                               <div className="font-semibold text-foreground truncate">{invoice.invoiceNumber}</div>
                               <div className="text-sm text-muted-foreground">
-                                {invoice.user?.company || invoice.user?.email}
+                                {invoice.user?.name || invoice.user?.email} - ({invoice.user?.email})
                               </div>
                               <div className="text-xs text-muted-foreground mt-1">
                                 Due: {format(new Date(invoice.dueDate), "MMM dd, yyyy")}
@@ -676,7 +676,7 @@ export default function AdminInvoiceManager() {
                               </div>
                               <div className="col-span-2">
                                 <p className="text-sm text-muted-foreground">Customer</p>
-                                <p className="font-semibold">{invoice.user?.company || invoice.user?.email}</p>
+                                <p className="font-semibold">{invoice.user?.name || invoice.user?.email}</p>
                               </div>
                             </div>
 

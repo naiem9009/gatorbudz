@@ -14,13 +14,34 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get("userId")
-
+    
     const where: any = {}
 
+    // VERIFIED users can only see their own invoices
     if (session.user.role === "VERIFIED") {
       where.userId = session.user.id
-    } else if (userId && ["MANAGER", "ADMIN"].includes(session.user.role)) {
-      where.userId = userId
+    } 
+    // MANAGER and ADMIN need to specify userId to see specific user's invoices
+    else if (["MANAGER", "ADMIN"].includes(session.user.role)) {
+      if (userId) {
+        where.userId = userId
+      } else {
+        // Return empty array or error for admin without userId
+        return NextResponse.json(
+          { 
+            success: true, 
+            data: [],
+            message: "Please provide a userId parameter to view specific user's invoices"
+          },
+          { status: 200 }
+        )
+        
+        // OR return error instead:
+        // return NextResponse.json(
+        //   { error: "userId parameter is required for admin/manager users" },
+        //   { status: 400 }
+        // )
+      }
     }
 
     const invoices = await prisma.invoice.findMany({
@@ -34,7 +55,8 @@ export async function GET(request: NextRequest) {
         dueDate: true,
         paymentMethod: true,
         paidAt: true,
-        stripeUrl: true,
+        createdAt: true,
+        updatedAt: true,
       },
       orderBy: { createdAt: "desc" },
     })

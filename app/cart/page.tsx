@@ -214,14 +214,14 @@ export default function CartPage() {
                     <span className="text-muted-foreground">Items ({items.length})</span>
                     <span className="text-foreground font-medium">${cartTotal.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  {/* <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Shipping</span>
                     <span className="text-foreground font-medium">Calculated at checkout</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Tax</span>
                     <span className="text-foreground font-medium">Calculated at checkout</span>
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="border-t border-border/30 pt-4">
